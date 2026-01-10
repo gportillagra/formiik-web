@@ -10,6 +10,24 @@
     <script type="module" src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="config.js" defer></script>
+    <style>
+        .date-input-group {
+            position: relative;
+            width: 160px;
+        }
+        .date-input-group i {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+            z-index: 4;
+            pointer-events: none;
+        }
+        .date-input-group input {
+            padding-right: 35px;
+        }
+    </style>
 </head>
 <body>
     <div class="page">
@@ -33,11 +51,16 @@
                         <div class="col">
                             <h2 class="page-title mb-1">Contactos con Dictamen</h2>
                             <div class="page-pretitle">
-                                Exporta a Excel contactos filtrados por dictamen
+                                Exporta a Excel contactos filtrados por dictamen y fecha
                             </div>
                         </div>
                         <div class="col-auto ms-sm-auto">
                             <div class="btn-list">
+                                <div class="date-input-group me-2">
+                                    <i class="ti ti-calendar-event"></i>
+                                    <input type="date" id="fechaFilter" class="form-control form-control-sm" 
+                                           placeholder="Desde fecha dictamen">
+                                </div>
                                 <button id="loadBtn" class="btn btn-primary">
                                     <i class="ti ti-database-import me-2"></i>Cargar Datos
                                 </button>
@@ -148,33 +171,45 @@
 
         async function loadData() {
             document.getElementById('loadBtn').disabled = true;
+            const fechaFilter = document.getElementById('fechaFilter').value;
             showStatus('Conectando a Firestore y cargando contactos...', 'info');
             
             try {
-                const snapshot = await db.collection('contactos')
-                    .where('dictamen', '!=', 'UNSPECIFIED')
-                    .get();
+                // ✅ Query base
+                let query = db.collection('contactos')
+                    .where('dictamen', '!=', 'UNSPECIFIED');
+                
+                // ✅ Filtro Timestamp aplicado directamente al query
+                if (fechaFilter) {
+                    const fechaInicio = new Date(fechaFilter + 'T00:00:00.000Z');
+                    query = query.where('fechaDictamen', '>=', firebase.firestore.Timestamp.fromDate(fechaInicio));
+                    showStatus(`🔍 Filtrando desde ${fechaFilter}`, 'info');
+                }
+                
+                const snapshot = await query.get();
                 
                 const tbody = document.getElementById('tableBody');
                 tbody.innerHTML = '';
                 contactosData = [];
                 
                 if (snapshot.empty) {
-                    showStatus('No se encontraron contactos con dictamen especificado.', 'warning');
+                    const msg = fechaFilter ? `No hay contactos desde ${fechaFilter}` : 'No se encontraron contactos con dictamen';
+                    showStatus(msg, 'warning');
                     updateStats(0, 0);
                     return;
                 }
 
                 snapshot.forEach(doc => {
                     const contacto = doc.data();
-                    const row = tbody.insertRow();
+                    const fechaStr = contacto.fechaDictamen ? contacto.fechaDictamen.toDate().toLocaleDateString('es-MX') : '';
                     
+                    const row = tbody.insertRow();
                     const cells = [
                         contacto.noContrato || '',
                         contacto.idAsignacion || '',
                         contacto.nombre || '',
                         contacto.dictamen || '',
-                        contacto.fechaDictamen ? contacto.fechaDictamen.toDate().toLocaleDateString('es-MX') : ''
+                        fechaStr
                     ];
                     
                     cells.forEach((text, i) => {
@@ -188,12 +223,13 @@
                         idAsignacion: contacto.idAsignacion || '',
                         nombre: contacto.nombre || '',
                         dictamen: contacto.dictamen || '',
-                        fechaDictamen: contacto.fechaDictamen ? contacto.fechaDictamen.toDate().toLocaleDateString('es-MX') : ''
+                        fechaDictamen: fechaStr
                     });
                 });
                 
                 updateStats(contactosData.length, contactosData.length);
-                showStatus(`✅ Cargados ${contactosData.length} contactos con dictamen`, 'success');
+                const filtroMsg = fechaFilter ? `desde ${fechaFilter}` : 'todos';
+                showStatus(`✅ Cargados ${contactosData.length} contactos (${filtroMsg})`, 'success');
                 document.getElementById('generateBtn').disabled = false;
                 
             } catch (error) {
@@ -213,7 +249,7 @@
 
         function showStatus(message, type = 'info') {
             const status = document.getElementById('status');
-            const icon = type === 'success' ? '✅' : type === 'danger' ? '❌' : '⏳';
+            const icon = type === 'success' ? '✅' : type === 'danger' ? '❌' : type === 'warning' ? '⚠️' : '⏳';
             status.innerHTML = `<div class="alert alert-${type} alert-dismissible alert-small" role="alert">
                 <span>${icon} ${message}</span>
             </div>`;
@@ -225,15 +261,63 @@
                 return;
             }
 
+            // Crear hoja con formato profesional
             const ws = XLSX.utils.json_to_sheet(contactosData);
+            
+            // ✅ Estilo encabezados (fila 0)
+            const range = XLSX.utils.decode_range(ws['!ref']);
+            for(let C = range.s.c; C <= range.e.c; ++C) {
+                const cell_address = XLSX.utils.encode_cell({c:C,r:0});
+                if(!ws[cell_address]) continue;
+                ws[cell_address].s = {
+                    font: { bold: true, color: { rgb: "FFFFFF" } },
+                    fill: { fgColor: { rgb: "4472C4" } },
+                    alignment: { horizontal: "center", vertical: "center", wrapText: true }
+                };
+            }
+            
+            // ✅ Autoajustar ancho columnas
+            const colWidths = [];
+            const headers = Object.keys(contactosData[0] || {});
+            headers.forEach((header, i) => {
+                let maxLength = header.length;
+                contactosData.forEach(row => {
+                    const value = row[header]?.toString() || '';
+                    maxLength = Math.max(maxLength, value.length);
+                });
+                colWidths[i] = { wch: Math.min(Math.max(maxLength + 2, 12), 50) };
+            });
+            ws['!cols'] = colWidths;
+            
+            // ✅ Bordes y formato filas
+            for(let R = range.s.r + 1; R <= range.e.r; ++R) {
+                for(let C = range.s.c; C <= range.e.c; ++C) {
+                    const cell_address = XLSX.utils.encode_cell({c:C,r:R});
+                    if(!ws[cell_address]) continue;
+                    if(!ws[cell_address].s) ws[cell_address].s = {};
+                    ws[cell_address].s = {
+                        border: {
+                            top: { style: 'thin', color: { rgb: "DDDDDD" } },
+                            bottom: { style: 'thin', color: { rgb: "DDDDDD" } },
+                            left: { style: 'thin', color: { rgb: "DDDDDD" } },
+                            right: { style: 'thin', color: { rgb: "DDDDDD" } }
+                        },
+                        alignment: { horizontal: "left", vertical: "center", wrapText: true }
+                    };
+                    // Alternar color filas
+                    if (R % 2 === 1) {
+                        ws[cell_address].s.fill = { fgColor: { rgb: "F2F2F2" } };
+                    }
+                }
+            }
+            
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, 'Contactos_Dictamen');
             
-            // Autoajustar columnas
-            const colWidths = contactosData[0] ? Object.keys(contactosData[0]).map(k => ({wch: Math.max(15, k.length + 2)})) : [];
-            ws['!cols'] = colWidths;
+            const fechaFilter = document.getElementById('fechaFilter').value;
+            const filename = `dictamen_cuentas_xalapa_${fechaFilter || 'todos'}_${new Date().toISOString().split('T')[0]}.xlsx`;
             
-            XLSX.writeFile(wb, `contactos_dictamen_${new Date().toISOString().split('T')[0]}.xlsx`);
+            XLSX.writeFile(wb, filename);
             showStatus(`📊 Excel descargado (${contactosData.length} registros)`, 'success');
         }
 
