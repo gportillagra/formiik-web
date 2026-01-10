@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Filtros Dispositivos - Formiik</title>
+    <!-- Tabler CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" />
+    <style>
+        .image-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            padding: 1rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .device-card {
+            position: relative;
+            background: #000;
+            border-radius: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .device-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+
+        /* Fondo con la misma imagen, desenfocada */
+        .device-card-bg {
+            position: absolute;
+            inset: 0;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
+            filter: blur(12px);
+            transform: scale(1.1);
+            opacity: 0.7;
+            z-index: 0;
+        }
+
+        /* Contenedor de la imagen principal */
+        .device-image-wrapper {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0rem;
+            min-height: 280px;
+            background: rgba(0,0,0,0.3);
+        }
+
+        /* Imagen principal: siempre completa */
+        .device-image {
+            max-width: 100%;
+            max-height: 280px;
+            object-fit: contain;
+            background: transparent;
+            display: block;
+        }
+
+        .device-info {
+            position: relative;
+            z-index: 1;
+            padding: 1.25rem;
+            background: rgba(255,255,255,0.95);
+        }
+
+        .device-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            color: #1f2937;
+        }
+
+        .device-meta {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-bottom: 0.25rem;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .status-abierta { background: #fef3c7; color: #92400e; }
+        .status-revision { background: #dbeafe; color: #1e40af; }
+        .status-autorizado { background: #dcfce7; color: #166534; }
+        .status-rechazado { background: #fee2e2; color: #991b1b; }
+        .status-pagado { background: #dcfce7; color: #166534; }
+
+        .loading { text-align: center; padding: 2rem; }
+        .no-results { text-align: center; padding: 2rem; color: #6b7280; }
+
+        .filters-section {
+            background: white;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .filter-group {
+            margin-bottom: 1rem;
+        }
+
+        .filter-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .filter-label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: #374151;
+        }
+
+        #btnFilter {
+            width: 100%;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="page-wrapper">
+            <div class="page-body">
+                <div class="container-xl">
+                    <!-- Filtros -->
+                    <div class="filters-section">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="filter-group">
+                                    <label class="filter-label">Seleccionar Gestor (Usuario)</label>
+                                    <select id="selectGestor" class="form-select">
+                                        <option value="">Cargando usuarios...</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="filter-group">
+                                    <label class="filter-label">Seleccionar Prealerta</label>
+                                    <select id="selectPrealerta" class="form-select" disabled>
+                                        <option value="">Primero selecciona un gestor</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="btnFilter" class="btn btn-primary" disabled>
+                            <i class="ti ti-filter me-2"></i> Filtrar
+                        </button>
+                    </div>
+
+                    <!-- Resultados -->
+                    <div class="card">
+                        <div class="card-body">
+                            <div id="loading" class="loading" style="display: none;">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Cargando...</span>
+                                </div>
+                                <p class="mt-2">Cargando dispositivos...</p>
+                            </div>
+                            <div id="grid" class="image-grid" style="display: none;"></div>
+                            <div id="noResults" class="no-results" style="display: none;">
+                                Selecciona gestor y prealerta para ver dispositivos
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK v10 compat -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    
+    <!-- Tabler JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
+
+    <!-- Configuración Firebase codificada -->
+    <script src="config.js"></script>
+
+    <script>
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Status mapping
+        const statusMap = {
+            'ABIERTA': 'status-abierta',
+            'EDICION': 'status-abierta',
+            'REVISION': 'status-revision',
+            'AUTORIZADO': 'status-autorizado',
+            'RECHAZADO': 'status-rechazado',
+            'PAGADO': 'status-pagado'
+        };
+
+        let allUsers = [];
+
+        // 1. Cargar todos los usuarios
+        async function loadUsers() {
+            try {
+                const snapshot = await db.collection('usuarios').get();
+                const selectGestor = document.getElementById('selectGestor');
+                
+                selectGestor.innerHTML = '<option value="">Selecciona un gestor</option>';
+                
+                snapshot.forEach(doc => {
+                    const user = doc.data();
+                    const option = document.createElement('option');
+                    option.value = user.email;
+                    option.textContent = user.displayName || user.email || 'Sin nombre';
+                    option.dataset.uid = doc.id;
+                    selectGestor.appendChild(option);
+                    allUsers.push({ 
+                        uid: doc.id, 
+                        email: user.email, 
+                        displayName: user.displayName || user.email 
+                    });
+                });
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        }
+
+        // 2. Cuando selecciona gestor, filtrar prealertas por email del usuario
+        document.getElementById('selectGestor').addEventListener('change', async function() {
+            const gestorEmail = this.value;
+            const selectPrealerta = document.getElementById('selectPrealerta');
+            const btnFilter = document.getElementById('btnFilter');
+            
+            selectPrealerta.innerHTML = '<option value="">Cargando prealertas...</option>';
+            selectPrealerta.disabled = true;
+            btnFilter.disabled = true;
+            
+            if (!gestorEmail) {
+                selectPrealerta.innerHTML = '<option value="">Primero selecciona un gestor</option>';
+                selectPrealerta.disabled = false;
+                return;
+            }
+
+            try {
+                const snapshot = await db.collection('prealerta')
+                    .where('gestor', 'array-contains', gestorEmail)
+                    .get();
+                
+                selectPrealerta.innerHTML = '<option value="">Selecciona una prealerta</option>';
+                
+                if (snapshot.empty) {
+                    selectPrealerta.innerHTML = '<option value="">No hay prealertas para este gestor</option>';
+                    selectPrealerta.disabled = false;
+                    return;
+                }
+                
+                snapshot.forEach(doc => {
+                    const prealerta = doc.data();
+                    const option = document.createElement('option');
+                    option.value = doc.id;
+                    option.textContent = `Semana ${prealerta.noSemana || 'N/C'} - ${prealerta.status || 'ABIERTA'}`;
+                    selectPrealerta.appendChild(option);
+                });
+                
+                selectPrealerta.disabled = false;
+                btnFilter.disabled = false;
+            } catch (error) {
+                console.error('Error loading prealertas:', error);
+                selectPrealerta.innerHTML = '<option value="">Error cargando prealertas</option>';
+            }
+        });
+
+        // Habilitar botón cuando se selecciona prealerta
+        document.getElementById('selectPrealerta').addEventListener('change', function() {
+            const btnFilter = document.getElementById('btnFilter');
+            btnFilter.disabled = !this.value;
+        });
+
+        // 3. Filtrar dispositivos por prealerta seleccionada
+        document.getElementById('btnFilter').addEventListener('click', async function() {
+            const prealertaId = document.getElementById('selectPrealerta').value;
+            
+            if (!prealertaId) return;
+            
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('grid').style.display = 'none';
+            document.getElementById('noResults').style.display = 'none';
+            
+            try {
+                const snapshot = await db.collection('dispositivos')
+                    .where('idPrealerta', '==', prealertaId)
+                    .where('urlFoto', '!=', null)
+                    .orderBy('fechaRecuperado')
+                    .get();
+                
+                displayDevices(snapshot.docs);
+            } catch (error) {
+                console.error('Error loading devices:', error);
+                document.getElementById('loading').innerHTML = 
+                    '<p class="text-danger">Error al cargar dispositivos: ' + error.message + '</p>';
+            }
+        });
+
+        function displayDevices(docs) {
+            const grid = document.getElementById('grid');
+            const loading = document.getElementById('loading');
+            const noResults = document.getElementById('noResults');
+
+            grid.innerHTML = '';
+            
+            if (docs.length === 0) {
+                loading.style.display = 'none';
+                grid.style.display = 'none';
+                noResults.style.display = 'block';
+                noResults.innerHTML = 'No se encontraron dispositivos con foto para esta prealerta';
+                return;
+            }
+
+            docs.forEach(doc => {
+                const data = doc.data();
+                if (data.urlFoto) {
+                    const title = `${data.noContrato || 'N/C'} - ${data.nombre || 'Sin nombre'}`;
+                    const statusClass = statusMap[data.status || 'EDICION'] || 'status-abierta';
+                    
+                    const card = document.createElement('div');
+                    card.className = 'device-card';
+                    card.innerHTML = `
+                        <div class="device-card-bg" 
+                             style="background-image: url('${data.urlFoto}');"></div>
+                        <div class="device-image-wrapper">
+                            <img src="${data.urlFoto}" alt="${title}" class="device-image" 
+                                 onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOWZhIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzkzOTM5MyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIGZvZG8gZGlzcG9uaWJsZSBBQklFUlRBPC90ZXh0Pjwvc3ZnPg=='">
+                        </div>
+                        <div class="device-info">
+                            <div class="device-title">${title}</div>
+                            <div class="device-meta">Contrato: ${data.noContrato || 'N/C'}</div>
+                            <div class="device-meta">Tipo: ${data.tipoDispositivo || 'N/C'}</div>
+                            <div class="device-meta">Serie: ${data.noSerie || 'N/C'}</div>
+                            <span class="status-badge ${statusClass}">${'REVISION'}</span>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                }
+            });
+
+            loading.style.display = 'none';
+            grid.style.display = 'grid';
+            noResults.style.display = 'none';
+        }
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadUsers();
+        });
+    </script>
+</body>
+</html>

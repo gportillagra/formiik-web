@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador Excel - Contactos Formiik</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+    <script type="module" src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="config.js" defer></script>
+</head>
+<body>
+    <div class="page">
+        <!-- Sidebar -->
+        <aside class="navbar navbar-vertical navbar-expand-lg navbar-dark">
+            <div class="container-fluid">
+                <div class="navbar-brand-wrapper">
+                    <a href="#" class="navbar-brand logo logo-lg" aria-label="Home">
+                        <strong class="navbar-brand-regular">Formiik</strong>
+                        <strong class="navbar-brand-collapsed">F</strong>
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <div class="page-wrapper">
+            <!-- Header -->
+            <div class="page-header d-print-none">
+                <div class="container-fluid">
+                    <div class="row g-2 align-items-center">
+                        <div class="col">
+                            <h2 class="page-title mb-1">Contactos con Dictamen</h2>
+                            <div class="page-pretitle">
+                                Exporta a Excel contactos filtrados por dictamen
+                            </div>
+                        </div>
+                        <div class="col-auto ms-sm-auto">
+                            <div class="btn-list">
+                                <button id="loadBtn" class="btn btn-primary">
+                                    <i class="ti ti-database-import me-2"></i>Cargar Datos
+                                </button>
+                                <button id="generateBtn" class="btn btn-success" disabled>
+                                    <i class="ti ti-file-spreadsheet me-2"></i>Generar Excel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content -->
+            <div class="page-body">
+                <div class="container-fluid">
+                    <!-- Stats Cards -->
+                    <div class="row row-cards row-deck">
+                        <div class="col-md-3 col-sm-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center">
+                                        <span class="avatar bg-blue avatar-rounded-start">
+                                            <i class="ti ti-users fs-4"></i>
+                                        </span>
+                                        <div class="ms-3">
+                                            <h3 id="totalCount" class="mb-0 lh-1 fs-3">0</h3>
+                                            <small class="text-muted">Contactos cargados</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center">
+                                        <span class="avatar bg-green avatar-rounded-start">
+                                            <i class="ti ti-checks fs-4"></i>
+                                        </span>
+                                        <div class="ms-3">
+                                            <h3 id="successCount" class="mb-0 lh-1 fs-3">0</h3>
+                                            <small class="text-muted">Listos para exportar</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main Card -->
+                    <div class="row row-cards">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="card-title">
+                                        <i class="ti ti-table me-2"></i>Lista de Contactos
+                                    </h3>
+                                </div>
+                                <div class="card-body border-bottom py-1">
+                                    <div class="d-flex">
+                                        <div id="status" class="flex-fill"></div>
+                                        <div class="btn-list ms-auto">
+                                            <span id="recordsInfo" class="badge bg-azure text-xs">0 registros</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table card-table table-vcenter table-hover datatable">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th class="w-1">Contrato</th>
+                                                <th class="w-1">Asignación</th>
+                                                <th class="w-2">Nombre</th>
+                                                <th>Dictamen</th>
+                                                <th class="w-1">Fecha</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tableBody">
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Backdrop -->
+    <div class="backdrop" hidden></div>
+
+    <script>
+        let db;
+        let contactosData = [];
+
+        async function initFirebase(config) {
+            try {
+                firebase.initializeApp(config);
+                db = firebase.firestore();
+                showStatus('Firebase conectado correctamente', 'success');
+                document.getElementById('loadBtn').disabled = false;
+            } catch (error) {
+                showStatus('Error conectando Firebase: ' + error.message, 'danger');
+                console.error(error);
+            }
+        }
+
+        async function loadData() {
+            document.getElementById('loadBtn').disabled = true;
+            showStatus('Conectando a Firestore y cargando contactos...', 'info');
+            
+            try {
+                const snapshot = await db.collection('contactos')
+                    .where('dictamen', '!=', 'UNSPECIFIED')
+                    .get();
+                
+                const tbody = document.getElementById('tableBody');
+                tbody.innerHTML = '';
+                contactosData = [];
+                
+                if (snapshot.empty) {
+                    showStatus('No se encontraron contactos con dictamen especificado.', 'warning');
+                    updateStats(0, 0);
+                    return;
+                }
+
+                snapshot.forEach(doc => {
+                    const contacto = doc.data();
+                    const row = tbody.insertRow();
+                    
+                    const cells = [
+                        contacto.noContrato || '',
+                        contacto.idAsignacion || '',
+                        contacto.nombre || '',
+                        contacto.dictamen || '',
+                        contacto.fechaDictamen ? contacto.fechaDictamen.toDate().toLocaleDateString('es-MX') : ''
+                    ];
+                    
+                    cells.forEach((text, i) => {
+                        const cell = row.insertCell(i);
+                        cell.textContent = text;
+                        cell.className = 'text-truncate';
+                    });
+                    
+                    contactosData.push({
+                        noContrato: contacto.noContrato || '',
+                        idAsignacion: contacto.idAsignacion || '',
+                        nombre: contacto.nombre || '',
+                        dictamen: contacto.dictamen || '',
+                        fechaDictamen: contacto.fechaDictamen ? contacto.fechaDictamen.toDate().toLocaleDateString('es-MX') : ''
+                    });
+                });
+                
+                updateStats(contactosData.length, contactosData.length);
+                showStatus(`✅ Cargados ${contactosData.length} contactos con dictamen`, 'success');
+                document.getElementById('generateBtn').disabled = false;
+                
+            } catch (error) {
+                showStatus('❌ Error al cargar datos: ' + error.message, 'danger');
+                console.error(error);
+            } finally {
+                document.getElementById('loadBtn').disabled = false;
+            }
+        }
+
+        function updateStats(total, success) {
+            document.getElementById('totalCount').textContent = total;
+            document.getElementById('successCount').textContent = success;
+            document.getElementById('recordsInfo').textContent = `${total} registros`;
+            document.getElementById('recordsInfo').className = total > 0 ? 'badge bg-success text-xs' : 'badge bg-muted text-xs';
+        }
+
+        function showStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            const icon = type === 'success' ? '✅' : type === 'danger' ? '❌' : '⏳';
+            status.innerHTML = `<div class="alert alert-${type} alert-dismissible alert-small" role="alert">
+                <span>${icon} ${message}</span>
+            </div>`;
+        }
+
+        function exportToExcel() {
+            if (contactosData.length === 0) {
+                showStatus('No hay datos para exportar', 'warning');
+                return;
+            }
+
+            const ws = XLSX.utils.json_to_sheet(contactosData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Contactos_Dictamen');
+            
+            // Autoajustar columnas
+            const colWidths = contactosData[0] ? Object.keys(contactosData[0]).map(k => ({wch: Math.max(15, k.length + 2)})) : [];
+            ws['!cols'] = colWidths;
+            
+            XLSX.writeFile(wb, `contactos_dictamen_${new Date().toISOString().split('T')[0]}.xlsx`);
+            showStatus(`📊 Excel descargado (${contactosData.length} registros)`, 'success');
+        }
+
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('loadBtn').addEventListener('click', loadData);
+            document.getElementById('generateBtn').addEventListener('click', exportToExcel);
+            
+            // Load config and init
+            if (typeof firebaseConfig !== 'undefined') {
+                initFirebase(firebaseConfig);
+            }
+        });
+    </script>
+</body>
+</html>
