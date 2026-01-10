@@ -312,7 +312,7 @@
             }
             
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Contactos_Dictamen');
+            XLSX.utils.book_append_sheet(wb, ws, 'Dictamen_cuentas');
             
             const fechaFilter = document.getElementById('fechaFilter').value;
             const filename = `dictamen_cuentas_xalapa_${fechaFilter || 'todos'}_${new Date().toISOString().split('T')[0]}.xlsx`;
