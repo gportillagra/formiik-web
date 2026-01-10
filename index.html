@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formiik Dashboard</title>
+    <!-- Tabler CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" />
+    <style>
+        .page-body {
+            padding: 3rem 0;
+        }
+        
+        .access-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .access-card {
+            background: white;
+            border-radius: 1rem;
+            padding: 3rem 2rem;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+            border: none;
+        }
+        
+        .access-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        }
+        
+        .access-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            margin: 0 auto 1.5rem;
+        }
+        
+        .visor-card .access-icon {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        
+        .dictamen-card .access-icon {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: white;
+        }
+        
+        .access-card h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #1f2937;
+        }
+        
+        .access-card p {
+            color: #6b7280;
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="page-wrapper">
+            <div class="page-body">
+                <div class="container-xl">
+                    <div class="row justify-content-center">
+                        <div class="col-12 text-center mb-5">
+                            <h1 class="h2 mb-3">Formiik Dashboard</h1>
+                            <p class="text-muted">Selecciona una opción</p>
+                        </div>
+                        
+                        <div class="col-lg-6">
+                            <a href="visor.html" class="access-card visor-card">
+                                <div class="access-icon">
+                                    <i class="ti ti-eye"></i>
+                                </div>
+                                <h3>Visor de Dispositivos</h3>
+                                <p>Visualizar dispositivos con filtros</p>
+                            </a>
+                        </div>
+                        
+                        <div class="col-lg-6">
+                            <a href="dictamen.html" class="access-card dictamen-card">
+                                <div class="access-icon">
+                                    <i class="ti ti-file-check"></i>
+                                </div>
+                                <h3>Dictamen</h3>
+                                <p>Autorizaciones y gestión</p>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabler JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
+</body>
+</html>
