@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestión de Ruta - Contactos</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Tabler core -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+    <!-- Firebase compat (mismo estilo que ya usas) -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+    <!-- Config codificada -->
+    <script src="config.js"></script>
+    <style>
+        .filter-chip {
+            max-width: 220px;
+        }
+        .table-fixed-head thead th {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body class="layout-fluid">
+<div class="page">
+    <!-- Sidebar simple -->
+    <aside class="navbar navbar-vertical navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <h1 class="navbar-brand navbar-brand-autodark">
+                <span class="navbar-brand-text">Formiik Ruta</span>
+            </h1>
+        </div>
+    </aside>
+
+    <div class="page-wrapper">
+        <!-- Header -->
+        <div class="page-header d-print-none">
+            <div class="container-xl">
+                <div class="row g-2 align-items-center">
+                    <div class="col">
+                        <h2 class="page-title mb-1">Gestión de ruta de contactos</h2>
+                        <div class="page-pretitle">
+                            Filtra contactos y actualiza el campo <b>enRuta</b>
+                        </div>
+                    </div>
+                    <div class="col-auto ms-auto">
+                        <div class="btn-list">
+                            <button id="loadBtn" class="btn btn-primary">
+                                <i class="ti ti-search me-1"></i>Buscar contactos
+                            </button>
+                            <button id="setRouteBtn" class="btn btn-success" disabled>
+                                <i class="ti ti-road me-1"></i>Marcar en ruta (seleccionados)
+                            </button>
+                            <button id="unsetAllBtn" class="btn btn-danger">
+                                <i class="ti ti-road-off me-1"></i>Quitar todo de ruta
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Page body -->
+        <div class="page-body">
+            <div class="container-xl">
+                <div class="row row-cards">
+                    <!-- Filtros -->
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">
+                                    <i class="ti ti-filter me-1"></i>Filtros opcionales
+                                </h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-4 col-lg-3">
+                                        <label class="form-label">Gestor asignado</label>
+                                        <input id="gestorAsignadoInput" type="text" class="form-control" placeholder="id / nombre gestor">
+                                    </div>
+                                    <div class="col-md-4 col-lg-3">
+                                        <label class="form-label">ID Asignación</label>
+                                        <input id="idAsignacionInput" type="text" class="form-control" placeholder="idAsignacion">
+                                    </div>
+                                    <div class="col-md-4 col-lg-3">
+                                        <label class="form-label">Colonia</label>
+                                        <input id="coloniaInput" type="text" class="form-control" placeholder="colonia">
+                                    </div>
+                                    <div class="col-md-4 col-lg-3">
+                                        <label class="form-label">Ciudad</label>
+                                        <input id="ciudadInput" type="text" class="form-control" placeholder="ciudad">
+                                    </div>
+                                    <div class="col-md-4 col-lg-3">
+                                        <label class="form-label">Segmento</label>
+                                        <select id="segmentoSelect" class="form-select">
+                                            <option value="">(todos)</option>
+                                            <option value="BUCKET_91_A_120">91 a 120</option>
+                                            <option value="BUCKET_121_A_150">121 a 150</option>
+                                            <option value="BUCKET_151_A_180">151 a 180</option>
+                                            <option value="BUCKET_181_A_210">181 a 210</option>
+                                            <option value="BUCKET_211_A_240">211 a 240</option>
+                                            <option value="BUCKET_241_A_270">241 a 270</option>
+                                            <option value="BUCKET_271_A_300">271 a 300</option>
+                                            <option value="BUCKET_MAS_DE_300">Más de 300</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 col-lg-3">
+                                        <label class="form-label">Número de equipos</label>
+                                        <input id="numeroEquiposInput" type="number" min="0" class="form-control" placeholder="= N equipos">
+                                    </div>
+                                    <div class="col-md-4 col-lg-3">
+                                        <label class="form-label">Dictamen</label>
+                                        <select id="dictamenSelect" class="form-select">
+                                            <option value="">(todos)</option>
+                                            <option value="CAMBIO_DOMICILIO">CAMBIO_DOMICILIO</option>
+                                            <option value="ILOCALIZABLE">ILOCALIZABLE</option>
+                                            <option value="EQUIPO_RECUPERADO">EQUIPO_RECUPERADO</option>
+                                            <option value="RECUPERADO_OTROS">RECUPERADO_OTROS</option>
+                                            <option value="NEGATIVA_ENTREGA">NEGATIVA_ENTREGA</option>
+                                            <option value="PROMESA_ENTREGA">PROMESA_ENTREGA</option>
+                                            <option value="PERDIO_EQUIPOS">PERDIO_EQUIPOS</option>
+                                            <option value="SERVICIO_ACTIVO">SERVICIO_ACTIVO</option>
+                                            <option value="NOTIFICACION">NOTIFICACION</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 col-lg-3 d-flex align-items-end">
+                                        <button id="clearFiltersBtn" class="btn btn-outline-secondary w-100">
+                                            <i class="ti ti-x me-1"></i>Limpiar filtros
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Resumen -->
+                    <div class="col-12">
+                        <div class="row row-cards">
+                            <div class="col-sm-4">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center">
+                                            <span class="avatar bg-blue text-white me-3">
+                                                <i class="ti ti-database fs-3"></i>
+                                            </span>
+                                            <div>
+                                                <div class="text-muted">Registros encontrados</div>
+                                                <div id="totalCount" class="h2 mb-0">0</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-sm-4">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center">
+                                            <span class="avatar bg-green text-white me-3">
+                                                <i class="ti ti-road fs-3"></i>
+                                            </span>
+                                            <div>
+                                                <div class="text-muted">En ruta (filtro)</div>
+                                                <div id="routeCount" class="h2 mb-0">0</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-sm-4">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center">
+                                            <span class="avatar bg-orange text-white me-3">
+                                                <i class="ti ti-checklist fs-3"></i>
+                                            </span>
+                                            <div>
+                                                <div class="text-muted">Seleccionados</div>
+                                                <div id="selectedCount" class="h2 mb-0">0</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabla -->
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">
+                                    <i class="ti ti-table me-1"></i>Contactos
+                                </h3>
+                                <div class="card-actions">
+                                    <span id="statusBadge" class="badge bg-muted">Sin cargar</span>
+                                </div>
+                            </div>
+                            <div class="card-body border-bottom py-2">
+                                <div id="status" class="small"></div>
+                            </div>
+                            <div class="table-responsive" style="max-height: 60vh;">
+                                <table class="table table-striped table-hover card-table table-vcenter table-fixed-head">
+                                    <thead class="table-dark">
+                                    <tr>
+                                        <th style="width:1%;">
+                                            <input id="selectAllCheckbox" type="checkbox" class="form-check-input m-0 align-middle">
+                                        </th>
+                                        <th>Contrato</th>
+                                        <th>Nombre</th>
+                                        <th>Colonia</th>
+                                        <th>Ciudad</th>
+                                        <th>Segmento</th>
+                                        <th>Dictamen</th>
+                                        <th class="text-center">En ruta</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody id="tableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                </div> <!-- row -->
+            </div> <!-- container -->
+        </div> <!-- page-body -->
+    </div> <!-- page-wrapper -->
+</div>
+
+<script>
+    let db;
+    let lastDocs = [];        // { id, ref, data }
+    let selectedIds = new Set();
+
+    // Inicializar Firebase usando config.js
+    (function initFirebase() {
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            setStatus('Firebase inicializado correctamente.', 'success');
+            updateStatusBadge('Listo', 'bg-green');
+        } catch (e) {
+            console.error(e);
+            setStatus('Error inicializando Firebase: ' + e.message, 'danger');
+            updateStatusBadge('Error', 'bg-red');
+        }
+    })();
+
+    // Construir query en función de filtros
+    function buildQuery() {
+        let query = db.collection('contactos');
+
+        const gestor = document.getElementById('gestorAsignadoInput').value.trim();
+        const idAsignacion = document.getElementById('idAsignacionInput').value.trim();
+        const colonia = document.getElementById('coloniaInput').value.trim();
+        const ciudad = document.getElementById('ciudadInput').value.trim();
+        const segmento = document.getElementById('segmentoSelect').value;
+        const numeroEquiposStr = document.getElementById('numeroEquiposInput').value.trim();
+        const dictamen = document.getElementById('dictamenSelect').value;
+
+        // Todos son opcionales. Solo se añaden si tienen valor.
+        if (gestor) {
+            // gestorAsignado es List<String> en tu modelo -> array-contains.
+            query = query.where('gestorAsignado', 'array-contains', gestor);
+        }
+        if (idAsignacion) {
+            query = query.where('idAsignacion', '==', idAsignacion);
+        }
+        if (colonia) {
+            query = query.where('colonia', '==', colonia);
+        }
+        if (ciudad) {
+            query = query.where('ciudad', '==', ciudad);
+        }
+        if (segmento) {
+            query = query.where('segmento', '==', segmento);
+        }
+        if (numeroEquiposStr) {
+            const numeroEquipos = Number(numeroEquiposStr);
+            if (!isNaN(numeroEquipos)) {
+                query = query.where('numeroEquipos', '==', numeroEquipos);
+            }
+        }
+        if (dictamen) {
+            query = query.where('dictamen', '==', dictamen);
+        }
+
+        // Puedes añadir un orden por nombre para tabla más estable.
+        query = query.where('esArchivado', '==', false);
+        query = query.orderBy('nombre');
+
+        return query;
+    }
+
+    async function loadContacts() {
+        try {
+            setStatus('Cargando contactos...', 'info');
+            updateStatusBadge('Cargando...', 'bg-azure');
+            selectedIds.clear();
+            updateSelectedCount();
+
+            const query = buildQuery();
+            const snapshot = await query.get();
+
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            lastDocs = [];
+
+            if (snapshot.empty) {
+                setStatus('No se encontraron contactos con los filtros actuales.', 'warning');
+                updateStatusBadge('Sin resultados', 'bg-yellow');
+                updateTotals();
+                return;
+            }
+
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                lastDocs.push({ id: doc.id, ref: doc.ref, data });
+
+                const tr = document.createElement('tr');
+
+                // checkbox
+                const tdCheck = document.createElement('td');
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.className = 'form-check-input m-0 align-middle row-select';
+                cb.dataset.id = doc.id;
+                cb.addEventListener('change', onRowSelectChange);
+                tdCheck.appendChild(cb);
+                tr.appendChild(tdCheck);
+
+                // columnas
+                const tdContrato = document.createElement('td');
+                tdContrato.textContent = data.noContrato || '';
+                tr.appendChild(tdContrato);
+
+                const tdNombre = document.createElement('td');
+                tdNombre.textContent = data.nombre || '';
+                tr.appendChild(tdNombre);
+
+                const tdColonia = document.createElement('td');
+                tdColonia.textContent = data.colonia || '';
+                tr.appendChild(tdColonia);
+
+                const tdCiudad = document.createElement('td');
+                tdCiudad.textContent = data.ciudad || '';
+                tr.appendChild(tdCiudad);
+
+                const tdSegmento = document.createElement('td');
+                tdSegmento.textContent = data.segmento || '';
+                tr.appendChild(tdSegmento);
+
+                const tdDictamen = document.createElement('td');
+                tdDictamen.textContent = data.dictamen || '';
+                tr.appendChild(tdDictamen);
+
+                const tdEnRuta = document.createElement('td');
+                tdEnRuta.className = 'text-center';
+                const badge = document.createElement('span');
+                const enRuta = !!data.enRuta;
+                badge.className = 'badge ' + (enRuta ? 'bg-green' : 'bg-secondary');
+                badge.textContent = enRuta ? 'Sí' : 'No';
+                tdEnRuta.appendChild(badge);
+                tr.appendChild(tdEnRuta);
+
+                tbody.appendChild(tr);
+            });
+
+            updateTotals();
+            setStatus(`Se cargaron ${lastDocs.length} contactos.`, 'success');
+            updateStatusBadge('Datos cargados', 'bg-green');
+
+        } catch (e) {
+            console.error(e);
+            setStatus('Error cargando contactos: ' + e.message, 'danger');
+            updateStatusBadge('Error', 'bg-red');
+        }
+    }
+
+    function updateTotals() {
+        const total = lastDocs.length;
+        const enRuta = lastDocs.filter(d => !!d.data.enRuta).length;
+        document.getElementById('totalCount').textContent = total;
+        document.getElementById('routeCount').textContent = enRuta;
+        updateSelectedCount();
+        document.getElementById('setRouteBtn').disabled = selectedIds.size === 0;
+    }
+
+    function setStatus(message, type) {
+        const status = document.getElementById('status');
+        const color = type === 'success' ? 'text-green' :
+                      type === 'danger' ? 'text-red' :
+                      type === 'warning' ? 'text-yellow' : 'text-muted';
+        status.innerHTML = `<span class="${color}">${message}</span>`;
+    }
+
+    function updateStatusBadge(text, badgeClass) {
+        const badge = document.getElementById('statusBadge');
+        badge.textContent = text;
+        badge.className = 'badge ' + badgeClass;
+    }
+
+    function onRowSelectChange(e) {
+        const id = e.target.dataset.id;
+        if (e.target.checked) {
+            selectedIds.add(id);
+        } else {
+            selectedIds.delete(id);
+        }
+        updateSelectedCount();
+    }
+
+    function updateSelectedCount() {
+        document.getElementById('selectedCount').textContent = selectedIds.size;
+        document.getElementById('setRouteBtn').disabled = selectedIds.size === 0;
+        // sincronizar checkbox "seleccionar todos"
+        const allCb = document.getElementById('selectAllCheckbox');
+        const rowCbs = Array.from(document.getElementsByClassName('row-select'));
+        if (rowCbs.length === 0) {
+            allCb.checked = false;
+            allCb.indeterminate = false;
+        } else {
+            const selected = rowCbs.filter(cb => cb.checked).length;
+            allCb.checked = selected === rowCbs.length;
+            allCb.indeterminate = selected > 0 && selected < rowCbs.length;
+        }
+    }
+
+    async function setSelectedInRoute(value) {
+        if (selectedIds.size === 0) return;
+        if (!confirm(`¿Quieres marcar enRuta = ${value ? 'true' : 'false'} para ${selectedIds.size} contactos seleccionados?`)) {
+            return;
+        }
+
+        try {
+            setStatus('Actualizando contactos seleccionados...', 'info');
+            const batch = db.batch();
+            lastDocs.forEach(d => {
+                if (selectedIds.has(d.id)) {
+                    batch.update(d.ref, { enRuta: value });
+                }
+            });
+            await batch.commit();  // operación atómica por lote[web:80][web:74]
+            setStatus('Contactos actualizados correctamente.', 'success');
+            await loadContacts();
+        } catch (e) {
+            console.error(e);
+            setStatus('Error actualizando contactos: ' + e.message, 'danger');
+        }
+    }
+
+    async function unsetAllInRoute() {
+        if (!confirm('¿Seguro que quieres poner enRuta = false para TODOS los contactos que actualmente están en ruta?')) {
+            return;
+        }
+        try {
+            setStatus('Buscando contactos en ruta...', 'info');
+            updateStatusBadge('Actualizando...', 'bg-azure');
+
+            // Busca sólo los enRuta == true
+            const snapshot = await db.collection('contactos')
+                .where('enRuta', '==', true)
+                .get();
+
+            if (snapshot.empty) {
+                setStatus('No hay contactos en ruta.', 'warning');
+                updateStatusBadge('Sin en ruta', 'bg-yellow');
+                return;
+            }
+
+            const batch = db.batch();
+            snapshot.forEach(doc => {
+                batch.update(doc.ref, { enRuta: false });
+            });
+            await batch.commit();
+
+            setStatus(`Se actualizó enRuta = false para ${snapshot.size} contactos.`, 'success');
+            updateStatusBadge('Ruta limpiada', 'bg-green');
+            // refresca si había una tabla cargada
+            if (lastDocs.length > 0) {
+                await loadContacts();
+            }
+        } catch (e) {
+            console.error(e);
+            setStatus('Error al quitar de ruta: ' + e.message, 'danger');
+            updateStatusBadge('Error', 'bg-red');
+        }
+    }
+
+    function clearFilters() {
+        document.getElementById('gestorAsignadoInput').value = '';
+        document.getElementById('idAsignacionInput').value = '';
+        document.getElementById('coloniaInput').value = '';
+        document.getElementById('ciudadInput').value = '';
+        document.getElementById('segmentoSelect').value = '';
+        document.getElementById('numeroEquiposInput').value = '';
+        document.getElementById('dictamenSelect').value = '';
+    }
+
+    // Eventos
+    document.getElementById('loadBtn').addEventListener('click', loadContacts);
+    document.getElementById('unsetAllBtn').addEventListener('click', unsetAllInRoute);
+    document.getElementById('setRouteBtn').addEventListener('click', () => setSelectedInRoute(true));
+    document.getElementById('clearFiltersBtn').addEventListener('click', clearFilters);
+    document.getElementById('selectAllCheckbox').addEventListener('change', (e) => {
+        const checked = e.target.checked;
+        const cbs = document.getElementsByClassName('row-select');
+        selectedIds.clear();
+        Array.from(cbs).forEach(cb => {
+            cb.checked = checked;
+            if (checked) selectedIds.add(cb.dataset.id);
+        });
+        updateSelectedCount();
+    });
+</script>
+</body>
+</html>
