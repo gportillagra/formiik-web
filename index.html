@@ -2,111 +2,227 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Formiik Dashboard</title>
-    <!-- Tabler CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" />
+    <title>Formiik Web - Inicio</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Tabler core -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
     <style>
-        .page-body {
-            padding: 3rem 0;
+        body {
+            background: radial-gradient(circle at top left, #f8fafc 0, #e2e8f0 45%, #cbd5f5 100%);
         }
-        
-        .access-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 2rem;
-            max-width: 800px;
-            margin: 0 auto;
+        .hero-logo {
+            font-weight: 800;
+            letter-spacing: .06em;
         }
-        
-        .access-card {
-            background: white;
-            border-radius: 1rem;
-            padding: 3rem 2rem;
-            text-align: center;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-            transition: all 0.3s ease;
-            text-decoration: none;
-            color: inherit;
-            border: none;
+        .hero-subtitle {
+            max-width: 520px;
         }
-        
-        .access-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        .menu-card {
+            cursor: pointer;
+            transition: transform .1s ease, box-shadow .1s ease;
         }
-        
-        .access-icon {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2.5rem;
-            margin: 0 auto 1.5rem;
-        }
-        
-        .visor-card .access-icon {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-        }
-        
-        .dictamen-card .access-icon {
-            background: linear-gradient(135deg, #f093fb, #f5576c);
-            color: white;
-        }
-        
-        .access-card h3 {
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-            color: #1f2937;
-        }
-        
-        .access-card p {
-            color: #6b7280;
-            margin-bottom: 2rem;
+        .menu-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(15, 23, 42, .12);
         }
     </style>
 </head>
-<body>
-    <div class="page">
-        <div class="page-wrapper">
-            <div class="page-body">
-                <div class="container-xl">
-                    <div class="row justify-content-center">
-                        <div class="col-12 text-center mb-5">
-                            <h1 class="h2 mb-3">Formiik Dashboard</h1>
-                            <p class="text-muted">Selecciona una opción</p>
-                        </div>
-                        
-                        <div class="col-lg-6">
-                            <a href="visor.html" class="access-card visor-card">
-                                <div class="access-icon">
-                                    <i class="ti ti-eye"></i>
+<body class="layout-boxed">
+<div class="page">
+    <!-- Navbar -->
+    <header class="navbar navbar-expand-md navbar-light d-print-none">
+        <div class="container-xl">
+            <h1 class="navbar-brand navbar-brand-autodark pe-0 pe-md-3">
+                <a href="index.html" class="d-flex align-items-center text-decoration-none">
+                    <span class="avatar avatar-sm bg-indigo-lt text-indigo me-2">
+                        <i class="ti ti-devices"></i>
+                    </span>
+                    <span class="hero-logo">FORMIIK WEB</span>
+                </a>
+            </h1>
+            <div class="navbar-nav flex-row order-md-last">
+                <div class="nav-item d-none d-md-flex">
+                    <span class="nav-link px-2 small text-muted">
+                        Herramientas internas de gestión
+                    </span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="page-wrapper">
+        <!-- Hero -->
+        <div class="page-body">
+            <div class="container-xl">
+                <div class="row row-cards align-items-center mb-4">
+                    <div class="col-lg-7">
+                        <div class="card border-0 shadow-none bg-transparent">
+                            <div class="card-body px-0">
+                                <h2 class="display-5 fw-bold mb-2">
+                                    Panel principal de <span class="text-indigo">Formiik Web</span>
+                                </h2>
+                                <p class="text-secondary fs-5 hero-subtitle">
+                                    Accede rápidamente a los módulos de administración de ruta, dictamen de cuentas
+                                    y visor de imágenes desde una sola pantalla.
+                                </p>
+                                <div class="d-flex flex-wrap gap-2 mt-2">
+                                    <a href="admin-ruta.html" class="btn btn-primary">
+                                        <i class="ti ti-road me-1"></i> Ir a Admin de Ruta
+                                    </a>
+                                    <a href="dictamen.html" class="btn btn-outline-primary">
+                                        <i class="ti ti-clipboard-check me-1"></i> Ir a Dictamen
+                                    </a>
                                 </div>
-                                <h3>Visor de Dispositivos</h3>
-                                <p>Visualizar dispositivos con filtros</p>
-                            </a>
-                        </div>
-                        
-                        <div class="col-lg-6">
-                            <a href="dictamen.html" class="access-card dictamen-card">
-                                <div class="access-icon">
-                                    <i class="ti ti-file-check"></i>
-                                </div>
-                                <h3>Dictamen</h3>
-                                <p>Autorizaciones y gestión</p>
-                            </a>
+                            </div>
                         </div>
                     </div>
+                    <div class="col-lg-5 d-none d-lg-block">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-6">
+                                        <div class="card bg-azure-lt mb-2">
+                                            <div class="card-body py-3">
+                                                <div class="d-flex align-items-center">
+                                                    <span class="avatar bg-azure text-white me-2">
+                                                        <i class="ti ti-map-2"></i>
+                                                    </span>
+                                                    <div>
+                                                        <div class="small text-muted">Ruta</div>
+                                                        <div class="fw-bold">Gestión diaria</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="card bg-violet-lt">
+                                            <div class="card-body py-3">
+                                                <div class="d-flex align-items-center">
+                                                    <span class="avatar bg-violet text-white me-2">
+                                                        <i class="ti ti-report-analytics"></i>
+                                                    </span>
+                                                    <div>
+                                                        <div class="small text-muted">Dictamen</div>
+                                                        <div class="fw-bold">Seguimiento</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 d-flex align-items-center">
+                                        <div class="w-100">
+                                            <div class="card bg-green-lt mb-2">
+                                                <div class="card-body py-3">
+                                                    <div class="d-flex align-items-center">
+                                                        <span class="avatar bg-green text-white me-2">
+                                                            <i class="ti ti-photo"></i>
+                                                        </span>
+                                                        <div>
+                                                            <div class="small text-muted">Visor</div>
+                                                            <div class="fw-bold">Evidencias</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <p class="small text-secondary mb-0">
+                                                Usa este panel como puerta de entrada a las herramientas de
+                                                operación y control de cartera.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Menú principal -->
+                <div class="row row-cards">
+                    <div class="col-md-4">
+                        <a href="admin-ruta.html" class="text-decoration-none text-reset">
+                            <div class="card menu-card">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <span class="avatar bg-indigo-lt text-indigo me-2">
+                                            <i class="ti ti-road"></i>
+                                        </span>
+                                        <h3 class="card-title mb-0 fs-4">Administrar ruta</h3>
+                                    </div>
+                                    <p class="text-secondary mb-2">
+                                        Gestiona el campo <b>enRuta</b>, filtra contactos y organiza las visitas de tu cartera.
+                                    </p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="badge bg-indigo-lt text-indigo">Ruta</span>
+                                        <span class="text-muted small">
+                                            Entrar <i class="ti ti-arrow-right ms-1"></i>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+
+                    <div class="col-md-4">
+                        <a href="dictamen.html" class="text-decoration-none text-reset">
+                            <div class="card menu-card">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <span class="avatar bg-teal-lt text-teal me-2">
+                                            <i class="ti ti-clipboard-check"></i>
+                                        </span>
+                                        <h3 class="card-title mb-0 fs-4">Dictamen de cuentas</h3>
+                                    </div>
+                                    <p class="text-secondary mb-2">
+                                        Visualiza y exporta cuentas con dictamen, genera reportes y da seguimiento a resultados.
+                                    </p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="badge bg-teal-lt text-teal">Dictamen</span>
+                                        <span class="text-muted small">
+                                            Entrar <i class="ti ti-arrow-right ms-1"></i>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+
+                    <div class="col-md-4">
+                        <a href="visor.html" class="text-decoration-none text-reset">
+                            <div class="card menu-card">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <span class="avatar bg-orange-lt text-orange me-2">
+                                            <i class="ti ti-photo-scan"></i>
+                                        </span>
+                                        <h3 class="card-title mb-0 fs-4">Visor de imágenes</h3>
+                                    </div>
+                                    <p class="text-secondary mb-2">
+                                        Consulta y revisa fotografías y evidencias asociadas a contratos y gestiones.
+                                    </p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="badge bg-orange-lt text-orange">Evidencias</span>
+                                        <span class="text-muted small">
+                                            Entrar <i class="ti ti-arrow-right ms-1"></i>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Footer simple -->
+                <div class="mt-4 mb-3 text-center text-secondary small">
+                    &copy; <span id="year"></span> Formiik Web · Panel interno de gestión
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Tabler JS -->
-    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
+<script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+</script>
 </body>
 </html>
