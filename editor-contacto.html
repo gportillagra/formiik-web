@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Formiik Web - Editor de Contacto</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Tabler -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+    <!-- Firebase compat -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+    <!-- Config -->
+    <script src="config.js"></script>
+    <style>
+        body {
+            background-color: #f5f7fb;
+        }
+    </style>
+</head>
+<body class="layout-boxed">
+<div class="page">
+    <header class="navbar navbar-expand-md navbar-light d-print-none mb-3">
+        <div class="container-xl">
+            <h1 class="navbar-brand navbar-brand-autodark pe-0 pe-md-3">
+                <a href="index.html" class="d-flex align-items-center text-decoration-none">
+                    <span class="avatar avatar-sm bg-indigo-lt text-indigo me-2">
+                        <i class="ti ti-edit"></i>
+                    </span>
+                    <span>Formiik Web · Editor de Contacto</span>
+                </a>
+            </h1>
+        </div>
+    </header>
+
+    <div class="page-wrapper">
+        <div class="page-body">
+            <div class="container-xl">
+                <div class="row row-cards">
+                    <!-- Búsqueda por noContrato -->
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Buscar contacto por número de contrato</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3 align-items-end">
+                                    <div class="col-md-4">
+                                        <label class="form-label">No. contrato</label>
+                                        <input id="noContratoInput" type="text" class="form-control" placeholder="Ej. 123456">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button id="searchBtn" class="btn btn-primary w-100">
+                                            <i class="ti ti-search me-1"></i>Buscar
+                                        </button>
+                                    </div>
+                                    <div class="col-md-5">
+                                        <div id="searchStatus" class="small text-muted"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Formulario de edición -->
+                    <div class="col-12">
+                        <div class="card d-none" id="formCard">
+                            <div class="card-header">
+                                <h3 class="card-title">Datos del contacto</h3>
+                                <div class="card-actions">
+                                    <span id="docIdBadge" class="badge bg-muted"></span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <form id="contactForm">
+                                    <div class="row g-3">
+                                        <!-- Información básica -->
+                                        <div class="col-md-6">
+                                            <label class="form-label">Nombre</label>
+                                            <input id="nombreInput" type="text" class="form-control">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">No. contrato</label>
+                                            <input id="noContratoField" type="text" class="form-control">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">ID asignación</label>
+                                            <input id="idAsignacionField" type="text" class="form-control">
+                                        </div>
+
+                                        <!-- Dirección -->
+                                        <div class="col-md-4">
+                                            <label class="form-label">Calle</label>
+                                            <input id="calleInput" type="text" class="form-control">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">Colonia</label>
+                                            <input id="coloniaInput" type="text" class="form-control">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">C.P.</label>
+                                            <input id="codigoPostalInput" type="text" class="form-control">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label">Ciudad</label>
+                                            <input id="ciudadInput" type="text" class="form-control">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Estado</label>
+                                            <input id="estadoInput" type="text" class="form-control">
+                                        </div>
+                                        <div class="col-md-9">
+                                            <label class="form-label">Referencias</label>
+                                            <input id="referenciasInput" type="text" class="form-control">
+                                        </div>
+
+                                        <!-- Datos de cartera -->
+                                        <div class="col-md-3">
+                                            <label class="form-label">Cartera</label>
+                                            <select id="carteraSelect" class="form-select">
+                                                <option value="UNSPECIFIED">UNSPECIFIED</option>
+                                                <option value="BACKLOG">BackLog</option>
+                                                <option value="TOTALSHOP">TotalShop</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Segmento</label>
+                                            <select id="segmentoSelect" class="form-select">
+                                                <option value="UNSPECIFIED">(sin segmento)</option>
+                                                <option value="BUCKET_91_A_120">91 a 120</option>
+                                                <option value="BUCKET_121_A_150">121 a 150</option>
+                                                <option value="BUCKET_151_A_180">151 a 180</option>
+                                                <option value="BUCKET_181_A_210">181 a 210</option>
+                                                <option value="BUCKET_211_A_240">211 a 240</option>
+                                                <option value="BUCKET_241_A_270">241 a 270</option>
+                                                <option value="BUCKET_271_A_300">271 a 300</option>
+                                                <option value="BUCKET_MAS_DE_300">Más de 300</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Dictamen</label>
+                                            <select id="dictamenSelect" class="form-select">
+                                                <option value="UNSPECIFIED">(sin dictamen)</option>
+                                                <option value="CAMBIO_DOMICILIO">CAMBIO_DOMICILIO</option>
+                                                <option value="ILOCALIZABLE">ILOCALIZABLE</option>
+                                                <option value="EQUIPO_RECUPERADO">EQUIPO_RECUPERADO</option>
+                                                <option value="RECUPERADO_OTROS">RECUPERADO_OTROS</option>
+                                                <option value="NEGATIVA_ENTREGA">NEGATIVA_ENTREGA</option>
+                                                <option value="PROMESA_ENTREGA">PROMESA_ENTREGA</option>
+                                                <option value="PERDIO_EQUIPOS">PERDIO_EQUIPOS</option>
+                                                <option value="SERVICIO_ACTIVO">SERVICIO_ACTIVO</option>
+                                                <option value="NOTIFICACION">NOTIFICACION</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">En ruta</label>
+                                            <div class="form-check form-switch">
+                                                <input id="enRutaSwitch" class="form-check-input" type="checkbox">
+                                                <label class="form-check-label" for="enRutaSwitch">Marcar como en ruta</label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Nuevos campos: esArchivado y gestorAsignado (array) -->
+                                        <div class="col-md-6">
+                                            <label class="form-label">Estado archivado</label>
+                                            <div class="form-check form-switch mt-2">
+                                                <input id="esArchivadoSwitch" class="form-check-input" type="checkbox">
+                                                <label class="form-check-label" for="esArchivadoSwitch">Marcar como archivado</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Gestores asignados</label>
+                                            <select id="gestorAsignadoSelect" class="form-select" multiple size="5">
+                                                <option value="">Cargando usuarios...</option>
+                                            </select>
+                                            <small class="form-hint">
+                                                Usa Ctrl/Cmd + clic para seleccionar varios gestores.
+                                            </small>
+                                        </div>
+
+                                        <!-- Números clave -->
+                                        <div class="col-md-3">
+                                            <label class="form-label">Número de equipos</label>
+                                            <input id="numeroEquiposInput" type="number" class="form-control" min="0">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Días de mora</label>
+                                            <input id="diasMoraInput" type="number" class="form-control">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Saldo total</label>
+                                            <input id="saldoTotalInput" type="number" step="0.01" class="form-control">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label">Referencia pago</label>
+                                            <input id="referenciaPagoInput" type="text" class="form-control">
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="card-footer d-flex justify-content-between align-items-center">
+                                <div id="saveStatus" class="small text-muted"></div>
+                                <div class="btn-list">
+                                    <button id="reloadBtn" class="btn btn-outline-secondary">
+                                        <i class="ti ti-refresh me-1"></i>Revertir cambios
+                                    </button>
+                                    <button id="saveBtn" class="btn btn-success">
+                                        <i class="ti ti-device-floppy me-1"></i>Guardar cambios
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div> <!-- col-12 -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let db;
+    let currentDocRef = null;
+    let currentDocData = null;
+    let usuariosCache = null;
+
+    (function initFirebase() {
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            loadUsuarios();
+            setSearchStatus('Firebase listo. Ingresa un número de contrato y presiona Buscar.', 'info');
+        } catch (e) {
+            console.error(e);
+            setSearchStatus('Error inicializando Firebase: ' + e.message, 'danger');
+        }
+    })();
+
+    async function loadUsuarios() {
+        try {
+            const snapshot = await db.collection('usuarios').get();
+            usuariosCache = {};
+            const select = document.getElementById('gestorAsignadoSelect');
+            select.innerHTML = '';
+
+            if (snapshot.empty) {
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.textContent = 'No hay usuarios disponibles';
+                select.appendChild(opt);
+                return;
+            }
+
+            snapshot.docs.forEach(doc => {
+                const data = doc.data();
+                // Se asume que cada usuario tiene un email único
+                const email = data.email || '';
+                if (!email) return;
+
+                usuariosCache[email] = {
+                    email,
+                    nombre: data.nombre || null
+                };
+
+                const option = document.createElement('option');
+                option.value = email;
+                option.textContent = data.nombre ? data.nombre + ' (' + email + ')' : email;
+                select.appendChild(option);
+            });
+        } catch (e) {
+            console.error('Error cargando usuarios:', e);
+            const select = document.getElementById('gestorAsignadoSelect');
+            select.innerHTML = '';
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = 'Error cargando usuarios';
+            select.appendChild(opt);
+        }
+    }
+
+    function setSearchStatus(message, type = 'info') {
+        const el = document.getElementById('searchStatus');
+        const color = type === 'success' ? 'text-green' :
+                      type === 'danger' ? 'text-red' :
+                      type === 'warning' ? 'text-yellow' : 'text-muted';
+        el.className = 'small ' + color;
+        el.textContent = message;
+    }
+
+    function setSaveStatus(message, type = 'info') {
+        const el = document.getElementById('saveStatus');
+        const color = type === 'success' ? 'text-green' :
+                      type === 'danger' ? 'text-red' :
+                      type === 'warning' ? 'text-yellow' : 'text-muted';
+        el.className = 'small ' + color;
+        el.textContent = message;
+    }
+
+    async function searchByNoContrato() {
+        const noContrato = document.getElementById('noContratoInput').value.trim();
+        if (!noContrato) {
+            setSearchStatus('Ingresa un número de contrato.', 'warning');
+            return;
+        }
+        setSearchStatus('Buscando contacto...', 'info');
+        setSaveStatus('');
+
+        try {
+            const snapshot = await db.collection('contactos')
+                .where('noContrato', '==', noContrato)
+                .limit(1)
+                .get();
+
+            if (snapshot.empty) {
+                currentDocRef = null;
+                currentDocData = null;
+                document.getElementById('formCard').classList.add('d-none');
+                setSearchStatus('No se encontró ningún contacto con ese número de contrato.', 'warning');
+                return;
+            }
+
+            const doc = snapshot.docs[0];
+            currentDocRef = doc.ref;
+            currentDocData = doc.data();
+            fillForm(currentDocData);
+            document.getElementById('formCard').classList.remove('d-none');
+            document.getElementById('docIdBadge').textContent = 'ID: ' + doc.id;
+            setSearchStatus('Contacto cargado correctamente.', 'success');
+            setSaveStatus('Sin cambios pendientes.', 'info');
+        } catch (e) {
+            console.error(e);
+            currentDocRef = null;
+            currentDocData = null;
+            document.getElementById('formCard').classList.add('d-none');
+            setSearchStatus('Error al buscar contacto: ' + e.message, 'danger');
+        }
+    }
+
+    function fillForm(data) {
+        document.getElementById('nombreInput').value = data.nombre || '';
+        document.getElementById('noContratoField').value = data.noContrato || '';
+        document.getElementById('idAsignacionField').value = data.idAsignacion || '';
+
+        document.getElementById('calleInput').value = data.calle || '';
+        document.getElementById('coloniaInput').value = data.colonia || '';
+        document.getElementById('codigoPostalInput').value = data.codigoPostal || '';
+        document.getElementById('ciudadInput').value = data.ciudad || '';
+        document.getElementById('estadoInput').value = data.estado || '';
+        document.getElementById('referenciasInput').value = data.referencias || '';
+
+        document.getElementById('carteraSelect').value = data.cartera || 'UNSPECIFIED';
+        document.getElementById('segmentoSelect').value = data.segmento || 'UNSPECIFIED';
+        document.getElementById('dictamenSelect').value = data.dictamen || 'UNSPECIFIED';
+
+        document.getElementById('enRutaSwitch').checked = !!data.enRuta;
+        document.getElementById('esArchivadoSwitch').checked = !!data.esArchivado;
+
+        // Seleccionar gestores actuales (array de emails)
+        const gestores = Array.isArray(data.gestorAsignado) ? data.gestorAsignado : [];
+        const select = document.getElementById('gestorAsignadoSelect');
+
+        // Limpiar selección actual
+        for (let i = 0; i < select.options.length; i++) {
+            select.options[i].selected = false;
+        }
+
+        if (gestores.length > 0) {
+            for (let i = 0; i < select.options.length; i++) {
+                const opt = select.options[i];
+                if (gestores.includes(opt.value)) {
+                    opt.selected = true;
+                }
+            }
+        }
+
+        document.getElementById('numeroEquiposInput').value = data.numeroEquipos ?? '';
+        document.getElementById('diasMoraInput').value = data.diasMora ?? '';
+        document.getElementById('saldoTotalInput').value = data.saldoTotal ?? '';
+        document.getElementById('referenciaPagoInput').value = data.referenciaPago ?? '';
+    }
+
+    function getSelectedGestores() {
+        const select = document.getElementById('gestorAsignadoSelect');
+        // Obtener todas las opciones seleccionadas como array de values.[web:6]
+        const values = Array.from(select.options)
+            .filter(option => option.selected && option.value)
+            .map(option => option.value);
+        return values;
+    }
+
+    async function saveChanges() {
+        if (!currentDocRef) {
+            setSaveStatus('No hay contacto cargado.', 'warning');
+            return;
+        }
+
+        const gestoresSeleccionados = getSelectedGestores();
+        const updated = {
+            nombre: document.getElementById('nombreInput').value.trim(),
+            noContrato: document.getElementById('noContratoField').value.trim(),
+            idAsignacion: document.getElementById('idAsignacionField').value.trim() || null,
+
+            calle: document.getElementById('calleInput').value.trim(),
+            colonia: document.getElementById('coloniaInput').value.trim(),
+            codigoPostal: document.getElementById('codigoPostalInput').value.trim(),
+            ciudad: document.getElementById('ciudadInput').value.trim(),
+            estado: document.getElementById('estadoInput').value.trim(),
+            referencias: document.getElementById('referenciasInput').value.trim() || null,
+
+            cartera: document.getElementById('carteraSelect').value || 'UNSPECIFIED',
+            segmento: document.getElementById('segmentoSelect').value || 'UNSPECIFIED',
+            dictamen: document.getElementById('dictamenSelect').value || 'UNSPECIFIED',
+
+            enRuta: document.getElementById('enRutaSwitch').checked,
+            esArchivado: document.getElementById('esArchivadoSwitch').checked,
+
+            // Si no hay gestores seleccionados, guardamos un array vacío
+            gestorAsignado: gestoresSeleccionados,
+
+            numeroEquipos: parseInt(document.getElementById('numeroEquiposInput').value, 10) || null,
+            diasMora: parseInt(document.getElementById('diasMoraInput').value, 10) || null,
+            saldoTotal: document.getElementById('saldoTotalInput').value
+                ? parseFloat(document.getElementById('saldoTotalInput').value)
+                : null,
+            referenciaPago: document.getElementById('referenciaPagoInput').value.trim() || null
+        };
+
+        setSaveStatus('Guardando cambios...', 'info');
+        try {
+            await currentDocRef.update(updated);
+            setSaveStatus('Cambios guardados correctamente.', 'success');
+            Object.assign(currentDocData, updated);
+        } catch (e) {
+            console.error(e);
+            setSaveStatus('Error al guardar cambios: ' + e.message, 'danger');
+        }
+    }
+
+    function reloadOriginal() {
+        if (!currentDocData) return;
+        fillForm(currentDocData);
+        setSaveStatus('Campos restaurados a los valores originales.', 'info');
+    }
+
+    // Eventos
+    document.getElementById('searchBtn').addEventListener('click', searchByNoContrato);
+    document.getElementById('noContratoInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            searchByNoContrato();
+        }
+    });
+    document.getElementById('saveBtn').addEventListener('click', saveChanges);
+    document.getElementById('reloadBtn').addEventListener('click', reloadOriginal);
+</script>
+</body>
+</html>
