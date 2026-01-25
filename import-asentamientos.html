@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Importar Asentamientos - Formiik</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css" />
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <style>
+        .mapping-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .preview-table { max-height: 300px; overflow: auto; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .auto-mapped { background: #e7f3ff; border: 2px solid #2196f3; }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>Importar Asentamientos desde Excel</h1>
+        
+        <div class="card">
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Seleccionar archivo Excel</label>
+                    <input type="file" id="fileInput" class="form-control" accept=".xlsx,.xls" />
+                </div>
+
+                <div class="row mb-3" id="sheetSelector" style="display: none;">
+                    <div class="col-md-6">
+                        <label class="form-label">Hoja</label>
+                        <select id="sheetSelect" class="form-select"></select>
+                    </div>
+                </div>
+
+                <div id="mappingSection" style="display: none;">
+                    <h5>🔄 Mapeo automático detectado <span id="autoCount" style="color: #28a745;"></span></h5>
+                    <div id="columnMapping"></div>
+                    <button id="previewBtn" class="btn btn-secondary mt-2">Vista previa</button>
+                </div>
+
+                <div id="previewSection" style="display: none;">
+                    <h5>Vista previa (primeras 10 filas)</h5>
+                    <div class="preview-table">
+                        <table id="previewTable" class="table table-sm table-bordered"></table>
+                    </div>
+                    <button id="importBtn" class="btn btn-primary mt-2">Guardar en Firestore</button>
+                </div>
+
+                <div id="status" class="status" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script>
+        let workbook = null;
+        let selectedSheet = null;
+        let headers = [];
+        let previewData = [];
+        let db = null;
+        let mapping = {};
+        let autoMappedCount = 0;
+
+        const fields = [
+            'codigoPostal', 'entidad', 'municipio', 'ciudad',
+            'tipoAsentamiento', 'asentamiento', 'claveOficina'
+        ];
+
+        const fieldAliases = {
+            'codigoPostal': ['cp', 'código postal', 'postal', 'codigo_postal', 'código', 'postal code'],
+            'entidad': ['estado', 'entidad', 'state', 'federación'],
+            'municipio': ['municipio', 'mun', 'município'],
+            'ciudad': ['ciudad', 'city', 'localidad'],
+            'tipoAsentamiento': ['tipo', 'type', 'tipo_asentamiento', 'asentamiento tipo'],
+            'asentamiento': ['asentamiento', 'colonia', 'neighborhood', 'col', 'fracc'],
+            'claveOficina': ['oficina', 'oficia', 'clave_oficina', 'clave oficina', 'ofic']
+        };
+
+        function initFirebase() {
+            try {
+                firebase.initializeApp(window.firebaseConfig || firebaseConfig);
+                db = firebase.firestore();
+                showStatus('Firebase inicializado correctamente.', 'success');
+            } catch (error) {
+                showStatus('Error inicializando Firebase: ' + error.message, 'error');
+            }
+        }
+
+        function showStatus(message, type = '') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+        }
+
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    workbook = XLSX.read(e.target.result, { type: 'array' });
+                    loadFirstSheet();
+                } catch (error) {
+                    showStatus('Error leyendo Excel: ' + error.message, 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        function loadFirstSheet() {
+            if (workbook.SheetNames.length === 0) return;
+            const firstSheetIndex = 0;
+            document.getElementById('sheetSelect').selectedIndex = firstSheetIndex;
+            populateSheetSelect();
+            loadSheet(firstSheetIndex);
+        }
+
+        function populateSheetSelect() {
+            const select = document.getElementById('sheetSelect');
+            select.innerHTML = '';
+            workbook.SheetNames.forEach((name, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = name;
+                select.appendChild(option);
+            });
+            document.getElementById('sheetSelector').style.display = 'block';
+            document.getElementById('sheetSelect').onchange = function() {
+                loadSheet(this.value);
+            };
+        }
+
+        function loadSheet(sheetIndex) {
+            selectedSheet = workbook.Sheets[workbook.SheetNames[sheetIndex]];
+            const jsonData = XLSX.utils.sheet_to_json(selectedSheet, { header: 1 });
+            headers = jsonData[0] || [];
+            console.log('Headers cargados:', headers); // DEBUG
+            createMappingUI();
+            document.getElementById('mappingSection').style.display = 'block';
+            showStatus(`✅ Cargada hoja "${workbook.SheetNames[sheetIndex]}" con ${headers.length} columnas`, 'success');
+        }
+
+        function createMappingUI() {
+            const container = document.getElementById('columnMapping');
+            container.innerHTML = '';
+            autoMappedCount = 0;
+            mapping = {};
+            
+            fields.forEach(field => {
+                let autoMatch = -1;
+                for (let i = 0; i < headers.length; i++) {
+                    const header = String(headers[i]).toLowerCase().trim();
+                    if (fieldAliases[field].some(alias => header.includes(alias.toLowerCase()))) {
+                        autoMatch = i;
+                        autoMappedCount++;
+                        mapping[field] = i;
+                        break;
+                    }
+                }
+
+                const div = document.createElement('div');
+                div.className = 'mapping-row' + (autoMatch >= 0 ? ' auto-mapped' : '');
+                div.innerHTML = `
+                    <label class="form-label col-form-label col-sm-3">${field}:</label>
+                    <select class="form-select col-sm-4" data-field="${field}">
+                        <option value="-1">-- No mapear --</option>
+                        ${headers.map((h, i) => 
+                            `<option value="${i}" ${autoMatch === i ? 'selected' : ''}>${h || `Col ${i}`}</option>`
+                        ).join('')}
+                    </select>
+                `;
+                container.appendChild(div);
+                
+                div.querySelector('select').onchange = function() {
+                    mapping[field] = parseInt(this.value) || -1;
+                };
+            });
+
+            document.getElementById('autoCount').textContent = 
+                autoMappedCount > 0 ? `(${autoMappedCount} auto-mapeados)` : '';
+        }
+
+        // ✅ VISTA PREVIA FIXED
+        document.getElementById('previewBtn').addEventListener('click', function() {
+            if (!selectedSheet) return showStatus('Selecciona una hoja primero', 'error');
+        
+            const selects = document.querySelectorAll('#columnMapping [data-field]');
+            const select = Array.from(selects).find(s => s.dataset.field === field);  // ✅ select directo
+            // QUITA selectDiv.querySelector('select')
+            const data = XLSX.utils.sheet_to_json(selectedSheet, { header: 1 }).slice(1, 11);
+            previewData = [];
+            let validRows = 0;
+            console.log('Raw data preview:', data.slice(0,2));
+            console.log('Mapping:', mapping);
+        
+            data.forEach((row, rowIndex) => {
+                if (!Array.isArray(row)) return;
+                const obj = { id: crypto.randomUUID() };
+        
+                fields.forEach(field => {
+                    const selectDiv = Array.from(selects).find(s => s.dataset.field === field);
+                    if (!selectDiv) return;
+                    const select = selectDiv.querySelector('select');
+                    const colIndex = parseInt(select.value);
+                    console.log(`Field ${field}: colIndex=${colIndex}, row[0]=${row[0] || 'undef'}`);
+                    
+                    let cellValue = colIndex >= 0 && colIndex < row.length ? row[colIndex] : undefined;
+                    
+                    if (cellValue != null && cellValue !== '') {
+                        obj[field] = String(cellValue).trim();
+                        validRows++;
+                    }
+                });
+        
+                previewData.push(obj);
+            });
+        
+            console.log('Preview data:', previewData);
+            console.log('Valid rows:', validRows);
+        
+            displayPreview();
+            document.getElementById('previewSection').style.display = 'block';
+            showStatus(`✅ Vista previa OK: ${previewData.length} filas (${validRows} celdas con datos)`, 'success');
+        });
+        
+        // ✅ IMPORTAR FIXED (mismo fix)
+        // ✅ VISTA PREVIA - FINAL FIX
+        document.getElementById('previewBtn').addEventListener('click', function() {
+            if (!selectedSheet) return showStatus('Selecciona una hoja primero', 'error');
+        
+            const selects = document.querySelectorAll('#columnMapping [data-field]');
+            const data = XLSX.utils.sheet_to_json(selectedSheet, { header: 1 }).slice(1, 11);
+            previewData = [];
+            let validRows = 0;
+            console.log('Raw data preview:', data.slice(0,2));
+            console.log('Mapping:', mapping);
+        
+            data.forEach((row, rowIndex) => {
+                if (!Array.isArray(row)) return;
+                const obj = { id: crypto.randomUUID() };
+        
+                fields.forEach(field => {
+                    const select = Array.from(selects).find(s => s.dataset.field === field);
+                    if (!select) return;
+                    const colIndex = parseInt(select.value);
+                    console.log(`Field ${field}: colIndex=${colIndex}, row[0]=${row[0] || 'undef'}`);
+                    
+                    let cellValue = colIndex >= 0 && colIndex < row.length ? row[colIndex] : undefined;
+                    
+                    if (cellValue != null && cellValue !== '') {
+                        obj[field] = String(cellValue).trim();
+                        validRows++;
+                    }
+                });
+        
+                previewData.push(obj);
+            });
+        
+            console.log('Preview data:', previewData);
+            console.log('Valid rows:', validRows);
+        
+            displayPreview();
+            document.getElementById('previewSection').style.display = 'block';
+            showStatus(`✅ Vista previa OK: ${previewData.length} filas (${validRows} celdas con datos)`, 'success');
+        });
+        
+        // ✅ IMPORTAR - FINAL FIX  
+        document.getElementById('importBtn').addEventListener('click', async function() {
+            if (!db) return showStatus('Firebase no inicializado', 'error');
+            if (!selectedSheet) return showStatus('Carga un Excel primero', 'error');
+            
+            const selects = document.querySelectorAll('#columnMapping [data-field]');
+            showStatus('Importando...', '');
+            this.disabled = true;
+        
+            try {
+                const data = XLSX.utils.sheet_to_json(selectedSheet, { header: 1 }).slice(1);
+                let processed = 0;
+        
+                for (let i = 0; i < data.length; i += 500) {
+                    const chunk = data.slice(i, i + 500);
+                    const batch = db.batch();
+        
+                    chunk.forEach(row => {
+                        if (!Array.isArray(row)) return;
+                        const docData = { id: crypto.randomUUID() };
+                        let hasData = false;
+        
+                        fields.forEach(field => {
+                            const select = Array.from(selects).find(s => s.dataset.field === field);
+                            if (!select) return;
+                            const colIndex = parseInt(select.value);
+                            
+                            let cellValue = colIndex >= 0 && colIndex < row.length ? row[colIndex] : undefined;
+                            
+                            if (cellValue != null && cellValue !== '') {
+                                docData[field] = String(cellValue).trim();
+                                hasData = true;
+                            }
+                        });
+        
+                        if (hasData) {
+                            const docRef = db.collection('asentamientos').doc(docData.id);
+                            batch.set(docRef, docData);
+                        }
+                    });
+        
+                    await batch.commit();
+                    processed += chunk.length;
+                    showStatus(`Progreso: ${Math.min(processed, data.length)}/${data.length}`, '');
+                }
+        
+                showStatus(`✅ ¡${processed} documentos importados en "asentamientos"!`, 'success');
+            } catch (error) {
+                showStatus('Error: ' + error.message, 'error');
+                console.error('Import error:', error);
+            } finally {
+                this.disabled = false;
+            }
+        });
+                
+        function displayPreview() {
+            let html = '<thead><tr><th>#</th><th>ID</th>' + fields.map(f => `<th>${f}</th>`).join('') + '</tr></thead><tbody>';
+            previewData.slice(0, 10).forEach((row, index) => {
+                html += '<tr>' +
+                    `<td>${index + 1}</td>` +
+                    `<td title="${row.id}">${row.id?.slice(0, 8)}...</td>` +
+                    fields.map(f => `<td>${row[f] || ''}</td>`).join('') +
+                    '</tr>';
+            });
+            html += '</tbody>';
+            document.getElementById('previewTable').innerHTML = html;
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof XLSX === 'undefined') {
+                showStatus('❌ SheetJS no cargó', 'error');
+                return;
+            }
+            initFirebase();
+        });
+    </script>
+</body>
+</html>
