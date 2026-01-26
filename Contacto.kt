@@ -75,6 +75,35 @@ data class Contacto(
     val referenciaPago: String?,
     val plazoConvenio: Int?,
     val gestorAsignado: List<String>,
-	val esArchivado: Boolean = false,
-	val dictamen: Dictamen = Dictamen.UNSPECIFIED
+	val esArchivado: Boolean = false
 )
+
+/*
+Tengo informacion en la hoja "BD_DATOS" y con la formula query quiero que logres una nueva tabla con los siguientes campos respetando los valores y especificaciones que se muestran en cada uno
+
+    val id: String -> Comuna A (0 a la izquierda),
+    val idAsignacion: String? -> Columna B,
+    val noContrato: String -> Igual que "id",
+    val nombre: String -> Columna F,
+    val calle: String -> Coluna N,
+    val colonia: String -> Columns O,
+    val codigoPostal: String -> Coluns P (Formato Texto),
+    val ciudad: String -> Columna Q,
+    val estado: String -> Columa R,
+    val entreCalles: String? columna Z,
+    val referencias: String? Coluns AA,
+    val lat: Double? -> Colums Ab,
+    val lng: Double? -> Coluns AC,
+    val enRuta: Boolean -> Siempre false,
+    val cartera: Cartera -> Columns E,
+    val segmento: Segmento -> debe tomar el valor de la columa M y buscalra en hoja "_const!A:B" y tomsr el resultado de coluna 2 de esta búsqueda,
+    val empresa: Empresa -> hacer lo mismo que para el valor segemento pero ahora tomando el valor de la columna G,
+    val fechaAsignacion: Timestamp? -> Tomsr el valor de la columna B que siempre tiene el formato "17/01/2026 AL 16/02/2026 BL" si te das cuenta contiene dos fechas y texto, solo debes estraer la primera fecha,
+    val fechaVencimiento: Timestamp? -> Tomsr el valor de la columna B que siempre tiene el formato "17/01/2026 AL 16/02/2026 BL" si te das cuenta contiene dos fechas y texto, solo debes estraer la segunda fecha,
+    val diasMora: Int? -> tomar el valor de la columna L,
+    val ciclo: Int? -> Tomar el valor de la columna I,
+    val numeroEquipos: Int? -> Tomar el valor de la columna W,
+    val saldoServicio: Double? -> Tomar el valor de la columna J,
+    val saldoTotal: Double? -> Tomar el valor de la columna K,
+	val esArchivado: Boolean = false -> siempre false
+*/
