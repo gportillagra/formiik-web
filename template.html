@@ -14,33 +14,80 @@
   
   <script src="./config.js"></script>
   
-  <!-- Firebase SDK -->
+  <!-- Firebase SDK - Auth + Firestore -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
+    const db = getFirestore(app);
 
     const loadingScreen = document.getElementById('loadingScreen');
     const mainContent = document.getElementById('mainContent');
 
-    onAuthStateChanged(auth, (user) => {
+    onAuthStateChanged(auth, async (user) => {
       if (!user) {
         window.location.href = './login.html';
-      } else {
-        const displayName = user.displayName || user.email.split('@')[0] || 'Usuario';
-        document.getElementById('userName').textContent = displayName;
-        
-        // Opcional: si tienes foto de perfil
-        if (user.photoURL) {
-          document.getElementById('userAvatar').style.background = `url(${user.photoURL}) center/cover no-repeat`;
-          document.getElementById('userAvatar').textContent = '';
+        return;
+      }
+
+      // Usuario autenticado → leer documento en /usuarios/{uid}
+      try {
+        const userDocRef = doc(db, "usuarios", user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        let displayName = user.email?.split('@')[0] || 'Usuario';
+        let photoUrl = null;
+        let rol = 'GESTOR';  // valor por defecto según tu data class
+        let plaza = 'XALAPA';
+
+        if (userDocSnap.exists()) {
+          const data = userDocSnap.data();
+          
+          // Prioridad: displayName de Firestore > fallback
+          if (data.displayName) {
+            displayName = data.displayName;
+          }
+          
+          if (data.photoUrl) {
+            photoUrl = data.photoUrl;
+          }
+          
+          if (data.rolUsuario) {
+            rol = data.rolUsuario;  // GESTOR o ADMINISTRADOR
+          }
+          
+          if (data.plaza) {
+            plaza = data.plaza;
+          }
+        } else {
+          console.warn("No se encontró documento de usuario en /usuarios/" + user.uid);
         }
 
-        loadingScreen.style.display = 'none';
-        mainContent.style.display = 'block';
+        // Actualizar interfaz
+        document.getElementById('userName').textContent = displayName;
+
+        if (photoUrl) {
+          const avatarEl = document.getElementById('userAvatar');
+          avatarEl.style.background = `url(${photoUrl}) center/cover no-repeat`;
+          avatarEl.textContent = '';  // quitar iniciales
+          avatarEl.style.backgroundSize = 'cover';
+        }
+
+        // Opcional: podrías mostrar rol o plaza en algún lugar
+        // Ejemplo: document.getElementById('userRole').textContent = rol;
+
+      } catch (error) {
+        console.error("Error al leer documento de usuario:", error);
+        // Fallback: mostrar email parcial
+        document.getElementById('userName').textContent = user.email?.split('@')[0] || 'Usuario';
       }
+
+      // Mostrar contenido
+      loadingScreen.style.display = 'none';
+      mainContent.style.display = 'block';
     });
   </script>
 
@@ -98,9 +145,8 @@
     }
 
     .spinner {
-      width: 60px;
-      height: 60px;
-      border: 6px solid rgba(167, 139, 250, 0.2);
+      width: 60px; height: 60px;
+      border: 6px solid rgba(167,139,250,0.2);
       border-top: 6px solid var(--formiik-primary);
       border-radius: 50%;
       animation: spin 1s linear infinite;
@@ -109,34 +155,25 @@
 
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-    #loadingScreen p {
-      font-size: 1.3rem;
-      font-weight: 600;
-      color: var(--formiik-primary-dark);
-    }
+    #loadingScreen p { font-size: 1.3rem; font-weight: 600; color: var(--formiik-primary-dark); }
 
-    /* Header rediseñado - responsivo */
+    /* Header */
     header {
       position: fixed;
       top: 0; left: 0; right: 0;
       height: 70px;
-      background: rgba(255, 255, 255, 0.94);
+      background: rgba(255,255,255,0.94);
       backdrop-filter: blur(16px) saturate(180%);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+      border-bottom: 1px solid rgba(255,255,255,0.35);
       box-shadow: 0 4px 20px rgba(0,0,0,0.08);
       z-index: 1000;
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 0 2rem;
-      transition: all 0.3s ease;
     }
 
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
+    .logo { display: flex; align-items: center; gap: 12px; }
 
     .logo-img {
       height: 42px;
@@ -152,20 +189,11 @@
       background: linear-gradient(135deg, #1e1b4b, #4338ca);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      letter-spacing: -0.5px;
     }
 
-    .user-section {
-      display: flex;
-      align-items: center;
-      gap: 1.5rem;
-    }
+    .user-section { display: flex; align-items: center; gap: 1.5rem; }
 
-    .user-info {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+    .user-info { display: flex; align-items: center; gap: 10px; }
 
     .user-name {
       font-weight: 600;
@@ -181,6 +209,8 @@
       height: 44px;
       border-radius: 50%;
       background: var(--formiik-gradient);
+      background-size: cover;
+      background-position: center;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -197,9 +227,9 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      background: rgba(239, 68, 68, 0.12);
+      background: rgba(239,68,68,0.12);
       color: #dc2626;
-      border: 1px solid rgba(239, 68, 68, 0.3);
+      border: 1px solid rgba(239,68,68,0.3);
       padding: 0.65rem 1.3rem;
       border-radius: 12px;
       font-weight: 600;
@@ -209,14 +239,13 @@
     }
 
     .logout-btn:hover {
-      background: rgba(239, 68, 68, 0.22);
+      background: rgba(239,68,68,0.22);
       transform: translateY(-1px);
       box-shadow: 0 4px 12px rgba(239,68,68,0.2);
     }
 
     .logout-icon { font-size: 1.3rem; display: none; }
 
-    /* Contenido principal */
     main {
       margin-top: 70px;
       padding: 2.5rem 2.5rem 4rem;
@@ -233,7 +262,7 @@
     }
 
     .card {
-      background: rgba(255, 255, 255, 0.95);
+      background: rgba(255,255,255,0.95);
       backdrop-filter: blur(18px);
       border-radius: 24px;
       border: 1px solid rgba(255,255,255,0.25);
@@ -258,38 +287,16 @@
       backdrop-filter: blur(10px);
     }
 
-    /* ── Media Queries ── */
     @media (max-width: 768px) {
-      header {
-        padding: 0 1.2rem;
-        height: 64px;
-      }
-
+      header { padding: 0 1.2rem; height: 64px; }
       .logo-img { height: 38px; }
       .logo-text { font-size: 1.3rem; }
-
-      .user-name {
-        max-width: 120px;
-        font-size: 0.95rem;
-      }
-
-      .avatar {
-        width: 40px;
-        height: 40px;
-        font-size: 1rem;
-      }
-
-      .logout-btn {
-        padding: 0.6rem 0.9rem;
-        border-radius: 10px;
-        min-width: 44px;
-      }
-
+      .user-name { max-width: 120px; font-size: 0.95rem; }
+      .avatar { width: 40px; height: 40px; font-size: 1rem; }
+      .logout-btn { padding: 0.6rem 0.9rem; min-width: 44px; }
       .logout-text { display: none; }
       .logout-icon { display: inline-block; }
-
       .user-section { gap: 1rem; }
-
       main { padding: 1.5rem 1.2rem; }
     }
 
@@ -301,13 +308,11 @@
 </head>
 <body>
 
-  <!-- Loading -->
   <div id="loadingScreen">
     <div class="spinner"></div>
-    <p>Verificando sesión...</p>
+    <p>Verificando sesión y perfil...</p>
   </div>
 
-  <!-- Contenido principal -->
   <div id="mainContent" style="display: none;">
 
     <header>
@@ -354,7 +359,7 @@
     </main>
 
     <footer>
-      <p>Formiik Web • v1.0.0</p>
+      <p>© 2026 Formiik Web • v1.0.0</p>
       <p style="margin-top: 0.6rem; font-size: 0.85rem;">
         Soluciones SaaS para microfinanzas y gestión en campo
       </p>
@@ -362,7 +367,6 @@
 
   </div>
 
-  <!-- Cerrar sesión -->
   <script type="module">
     import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
