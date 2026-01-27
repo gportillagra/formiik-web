@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Formiik Web - Importar Cartera</title>
+  
+  <!-- Meta redes -->
+  <meta property="og:title" content="Formiik Web - Importar Cartera" />
+  <meta property="og:description" content="Importa y asigna cartera desde Excel a contactos, dispositivos y teléfonos." />
+  <meta property="og:image" content="./img/icon.png" />
+  
+  <link rel="icon" href="./img/icon.png">
+  <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://unpkg.com/sortablejs@latest/Sortable.min.js"></script>
+  
+  <style>
+    :root {
+      --formiik-primary: #6366f1;
+      --formiik-primary-light: #818cf8;
+      --formiik-secondary: #f8fafc;
+      --formiik-soft-blue: #e0e7ff;
+      --formiik-soft-purple: #f3e8ff;
+      --formiik-soft-red: #fee2e2;
+      --formiik-text: #1e293b;
+      --formiik-text-muted: #64748b;
+      --formiik-border: #e2e8f0;
+      --formiik-shadow: rgba(0,0,0,0.08);
+      --formiik-success: #10b981;
+      --formiik-warning: #f59e0b;
+      --formiik-danger: #ef4444;
+    }
+    
+    * { box-sizing: border-box; }
+    
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      min-height: 100vh;
+      background: 
+        radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.3) 0%, transparent 50%),
+        linear-gradient(135deg, var(--formiik-soft-blue) 0%, var(--formiik-soft-purple) 100%);
+      font-family: 'Inter', sans-serif;
+      color: var(--formiik-text);
+    }
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    
+    .header h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--formiik-primary), var(--formiik-primary-light));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin: 0;
+    }
+    
+    .glass-card {
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.2);
+      box-shadow: 0 25px 45px var(--formiik-shadow);
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+    
+    .upload-area {
+      border: 3px dashed var(--formiik-border);
+      border-radius: 15px;
+      padding: 3rem;
+      text-align: center;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      background: var(--formiik-secondary);
+    }
+    
+    .upload-area:hover, .upload-area.dragover {
+      border-color: var(--formiik-primary);
+      background: linear-gradient(135deg, var(--formiik-soft-blue), var(--formiik-soft-purple));
+    }
+    
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.95rem;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, var(--formiik-primary), var(--formiik-primary-light));
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(99, 102, 241, 0.4);
+    }
+    
+    .btn-success {
+      background: linear-gradient(135deg, var(--formiik-success), #059669);
+      color: white;
+    }
+    
+    .btn-warning {
+      background: linear-gradient(135deg, var(--formiik-warning), #d97706);
+      color: white;
+    }
+    
+    .btn-danger {
+      background: linear-gradient(135deg, var(--formiik-danger), #dc2626);
+      color: white;
+    }
+    
+    .table-container {
+      overflow-x: auto;
+      border-radius: 15px;
+      box-shadow: 0 10px 30px var(--formiik-shadow);
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+    
+    th {
+      background: linear-gradient(135deg, var(--formiik-primary), var(--formiik-primary-light));
+      color: white;
+      padding: 1rem;
+      text-align: left;
+      font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    
+    th:hover {
+      background: linear-gradient(135deg, var(--formiik-primary-light), var(--formiik-primary));
+    }
+    
+    td {
+      padding: 1rem;
+      border-bottom: 1px solid var(--formiik-border);
+    }
+    
+    tr.existing {
+      background-color: #fef3c7;
+    }
+    
+    tr:hover {
+      background-color: rgba(99, 102, 241, 0.05);
+    }
+    
+    .gestor-select {
+      min-width: 200px;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem;
+      margin: 2rem 0;
+    }
+    
+    .stat-card {
+      background: linear-gradient(135deg, var(--formiik-primary), var(--formiik-primary-light));
+      color: white;
+      padding: 1.5rem;
+      border-radius: 15px;
+      text-align: center;
+    }
+    
+    .spinner {
+      border: 3px solid var(--formiik-secondary);
+      border-top: 3px solid var(--formiik-primary);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .hidden { display: none; }
+    .fade-in { animation: fadeIn 0.5s ease-in; }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .section { margin-top: 3rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><i class="ti ti-file-spreadsheet"></i> Importar Cartera</h1>
+      <p>Sube tu Excel y asigna automáticamente la cartera por segmento</p>
+    </div>
+    
+    <div id="authCheck" class="glass-card hidden">
+      <div class="spinner"></div>
+      <p>Verificando sesión...</p>
+    </div>
+    
+    <div id="mainContent" class="hidden">
+      <!-- Upload Section -->
+      <div class="glass-card">
+        <div id="uploadArea" class="upload-area fade-in">
+          <i class="ti ti-file-spreadsheet" style="font-size: 4rem; color: var(--formiik-text-muted); margin-bottom: 1rem;"></i>
+          <h3>Arrstra y suelta tu archivo Excel</h3>
+          <p>o haz clic para seleccionar</p>
+          <input type="file" id="excelFile" accept=".xlsx,.xls" style="display: none;">
+          <button class="btn btn-primary" onclick="document.getElementById('excelFile').click()">
+            <i class="ti ti-upload"></i> Seleccionar Excel
+          </button>
+        </div>
+        
+        <div id="parseResult" class="hidden">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div style="font-size: 2rem; font-weight: 700;" id="contactsCount">0</div>
+              <div>Contactos</div>
+            </div>
+            <div class="stat-card">
+              <div style="font-size: 2rem; font-weight: 700;" id="devicesCount">0</div>
+              <div>Dispositivos</div>
+            </div>
+            <div class="stat-card">
+              <div style="font-size: 2rem; font-weight: 700;" id="phonesCount">0</div>
+              <div>Teléfonos</div>
+            </div>
+          </div>
+          <button id="checkFirestore" class="btn btn-primary">
+            <i class="ti ti-database"></i> Verificar en Firestore
+          </button>
+        </div>
+      </div>
+      
+      <!-- Gestores Section -->
+      <div id="gestoresSection" class="glass-card section hidden">
+        <h3><i class="ti ti-users"></i> Gestores Disponibles</h3>
+        <div style="margin: 1rem 0;">
+          <input type="text" id="gestoresInput" placeholder="gestor1@email.com,gestor2@email.com" class="form-control" style="width: 400px; padding: 0.75rem; border: 2px solid var(--formiik-border); border-radius: 10px;">
+          <button id="addGestores" class="btn btn-success" style="margin-left: 1rem;">
+            <i class="ti ti-plus"></i> Agregar Gestores
+          </button>
+        </div>
+        <div id="gestoresList"></div>
+        <button id="autoAssign" class="btn btn-warning">
+          <i class="ti ti-rotate"></i> Asignación Automática Equitativa
+        </button>
+      </div>
+      
+      <!-- Contacts Table -->
+      <div id="contactsSection" class="glass-card section hidden">
+        <h3><i class="ti ti-contacts"></i> Contactos <span id="tableStats"></span></h3>
+        <div class="table-container">
+          <table id="contactsTable">
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="selectAll"></th>
+                <th onclick="sortTable('id')">ID ▲</th>
+                <th onclick="sortTable('noContrato')">Contrato</th>
+                <th onclick="sortTable('nombre')">Nombre</th>
+                <th onclick="sortTable('segmento')">Segmento</th>
+                <th onclick="sortTable('numeroEquipos')">Equipos</th>
+                <th>Gestor(es)</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div style="margin-top: 1rem; display: flex; gap: 1rem;">
+          <button id="saveAll" class="btn btn-success">
+            <i class="ti ti-device-floppy"></i> Guardar Todo en Firestore
+          </button>
+          <button id="saveSelected" class="btn btn-primary">
+            <i class="ti ti-checks"></i> Guardar Seleccionados
+          </button>
+        </div>
+      </div>
+      
+      <!-- Distribution Preview -->
+      <div id="distributionSection" class="glass-card section hidden">
+        <h3><i class="ti ti-chart-bar"></i> Distribución por Segmento</h3>
+        <div id="distributionPreview" class="stats-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+    import { getFirestore, collection, doc, getDoc, setDoc, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+    import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+    
+    // Config desde config.js (base64 encoded)
+    const encodedConfig = 'eyJhcGlLZXkiOiJBSXphU3lBd01qUnNLbzVwTnRwalVIdklPVGg0LTJqbFMzY1lVVzAiLCJhdXRoRG9tYWluIjoiZm9ybWlpay5maXJlYmFzZWFwcC5jb20iLCJwcm9qZWN0SWQiOiJmb3JtaWlrIiwic3RvcmFnZUJ1Y2tldCI6ImZvcm1paWsuYXBwc3BvdC5jb20iLCJtZXNzYWdpbmdTZW5kZXJJZCI6IjQxNDE2MTY5MzY4OCIsImFwcElkIjoiMTo0MTQxNjE2OTM2ODg6d2ViOmMyYmIwOWM2YWJmNjA0NzYyMjA0MGQiLCJtZWFzdXJlbWVudElkIjoiRy1TR1FMSkoyR0NTIn0='; // Reemplaza con tu config real base64
+    const firebaseConfig = JSON.parse(atob(encodedConfig));
+    
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    
+    // Estado global
+    let parsedData = { contactos: [], dispositivos: [], telefonos: [] };
+    let contactosEnFirestore = new Set();
+    let availableGestores = [];
+    let currentSort = { col: null, dir: 1 };
+    
+    // Validar sesión
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        window.location.href = './login.html';
+        return;
+      }
+      document.getElementById('authCheck').classList.add('hidden');
+      document.getElementById('mainContent').classList.remove('hidden');
+      loadGestores();
+    });
+    
+    // Upload Excel
+    document.getElementById('excelFile').addEventListener('change', handleFile);
+    const uploadArea = document.getElementById('uploadArea');
+    
+    uploadArea.addEventListener('click', () => document.getElementById('excelFile').click());
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('dragover');
+    });
+    uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile({ target: { files: [file] } });
+    });
+    
+    async function handleFile(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: 'array' });
+      
+      // Parsear hojas
+      workbook.SheetNames.forEach(sheetName => {
+        const sheet = workbook.Sheets[sheetName];
+        const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+        
+        if (json.length > 0) {
+          const headers = json[0].map(h => h.toString().toLowerCase().replace(/s+/g, ''));
+          const rows = json.slice(1).map(row => {
+            let obj = {};
+            headers.forEach((header, i) => {
+              obj[header] = row[i] ?? '';
+            });
+            return obj;
+          });
+          
+          if (sheetName.toLowerCase().includes('contacto')) parsedData.contactos = rows;
+          else if (sheetName.toLowerCase().includes('dispositivo')) parsedData.dispositivos = rows;
+          else if (sheetName.toLowerCase().includes('telefono')) parsedData.telefonos = rows;
+        }
+      });
+      
+      updateParseStats();
+      document.getElementById('parseResult').classList.remove('hidden');
+    }
+    
+    function updateParseStats() {
+      document.getElementById('contactsCount').textContent = parsedData.contactos.length;
+      document.getElementById('devicesCount').textContent = parsedData.dispositivos.length;
+      document.getElementById('phonesCount').textContent = parsedData.telefonos.length;
+    }
+    
+    // Verificar en Firestore
+    document.getElementById('checkFirestore').addEventListener('click', async () => {
+      document.getElementById('checkFirestore').innerHTML = '<div class="spinner" style="width:20px;height:20px;display:inline-block;"></div> Verificando...';
+      
+      // Verificar contactos existentes
+      contactosEnFirestore.clear();
+      for (const contacto of parsedData.contactos) {
+        const docRef = doc(db, 'debug_contactos', contacto.id || contacto.nocontrato);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          contactosEnFirestore.add(contacto.id || contacto.nocontrato);
+          // Completar datos faltantes
+          const data = docSnap.data();
+          Object.assign(contacto, data);
+        }
+      }
+      
+      renderContactsTable();
+      document.getElementById('gestoresSection').classList.remove('hidden');
+      document.getElementById('checkFirestore').innerHTML = '<i class="ti ti-check"></i> Verificado';
+      document.getElementById('checkFirestore').disabled = true;
+    });
+    
+    // Cargar gestores desde /usuarios
+    async function loadGestores() {
+      try {
+        const q = query(collection(db, 'usuarios'));
+        const snapshot = await getDocs(q);
+        availableGestores = snapshot.docs.map(doc => doc.data().email || doc.id);
+      } catch(e) {
+        console.error('No se pudo cargar usuarios:', e);
+      }
+    }
+    
+    // Agregar gestores
+    document.getElementById('addGestores').addEventListener('click', () => {
+      const input = document.getElementById('gestoresInput');
+      const emails = input.value.split(',').map(e => e.trim()).filter(e => e);
+      availableGestores.push(...emails);
+      input.value = '';
+      renderGestoresList();
+    });
+    
+    function renderGestoresList() {
+      const list = document.getElementById('gestoresList');
+      list.innerHTML = availableGestores.map(email => `
+        <span class="badge bg-primary me-2 mb-2">${email} <i class="ti ti-x ms-1" onclick="removeGestor('${email}')"></i></span>
+      `).join('');
+    }
+    
+    window.removeGestor = (email) => {
+      availableGestores = availableGestores.filter(g => g !== email);
+      renderGestoresList();
+    };
+    
+    // Asignación automática
+    document.getElementById('autoAssign').addEventListener('click', autoAssignCartera);
+    
+    async function autoAssignCartera() {
+      if (availableGestores.length === 0) {
+        alert('Agrega al menos un gestor');
+        return;
+      }
+      
+      // Agrupar por segmento
+      const segmentos = {};
+      parsedData.contactos.forEach(c => {
+        const seg = c.segmento || 'UNSPECIFIED';
+        if (!segmentos[seg]) segmentos[seg] = [];
+        segmentos[seg].push(c);
+      });
+      
+      Object.values(segmentos).forEach(contactsInSegment => {
+        // Ordenar por numeroEquipos DESC, priorizando sin gestor
+        contactsInSegment.sort((a, b) => {
+          const gestorA = (a.gestorAsignado?.length || 0) === 0 ? -1 : 1;
+          const gestorB = (b.gestorAsignado?.length || 0) === 0 ? -1 : 1;
+          if (gestorA !== gestorB) return gestorA - gestorB;
+          return (b.numeroEquipos || 0) - (a.numeroEquipos || 0);
+        });
+        
+        // Contar asignaciones actuales por gestor
+        const counts = {};
+        availableGestores.forEach(g => counts[g] = 0);
+        contactsInSegment.forEach(c => {
+          const gestores = c.gestorAsignado || [];
+          if (gestores.length > 0) {
+            gestores.forEach(g => counts[g] = (counts[g] || 0) + 1);
+          }
+        });
+        
+        // Reasignar equitativamente
+        let idx = 0;
+        contactsInSegment.forEach(contacto => {
+          if ((contacto.gestorAsignado?.length || 0) === 0 || counts[availableGestores[idx]] > Math.ceil(contactsInSegment.length / availableGestores.length)) {
+            contacto.gestorAsignado = [availableGestores[idx]];
+            counts[availableGestores[idx]]++;
+          }
+          idx = (idx + 1) % availableGestores.length;
+        });
+      });
+      
+      renderContactsTable();
+      renderDistribution();
+    }
+    
+    function renderContactsTable() {
+      const tbody = document.querySelector('#contactsTable tbody');
+      tbody.innerHTML = parsedData.contactos.map((contacto, i) => {
+        const isExisting = contactosEnFirestore.has(contacto.id || contacto.nocontrato);
+        const gestores = contacto.gestorAsignado?.join(', ') || '';
+        return `
+          <tr class="${isExisting ? 'existing' : ''}">
+            <td><input type="checkbox" class="row-select" data-index="${i}"></td>
+            <td>${contacto.id || contacto.nocontrato || ''}</td>
+            <td>${contacto.noContrato || ''}</td>
+            <td>${contacto.nombre || ''}</td>
+            <td>${contacto.segmento || ''}</td>
+            <td>${contacto.numeroEquipos || 0}</td>
+            <td>
+              <select multiple class="gestor-select form-select" data-index="${i}">
+                ${availableGestores.map(g => `<option value="${g}" ${contacto.gestorAsignado?.includes(g) ? 'selected' : ''}>${g}</option>`).join('')}
+              </select>
+            </td>
+            <td>${isExisting ? '✓ Existente' : 'Nuevo'}</td>
+          </tr>
+        `;
+      }).join('');
+      
+      document.getElementById('contactsSection').classList.remove('hidden');
+      updateTableStats();
+    }
+    
+    function updateTableStats() {
+      const existing = parsedData.contactos.filter(c => contactosEnFirestore.has(c.id || c.nocontrato)).length;
+      document.getElementById('tableStats').textContent = `(${existing}/${parsedData.contactos.length} existentes)`;
+    }
+    
+    // Sort table
+    window.sortTable = (col) => {
+      if (currentSort.col === col) currentSort.dir *= -1;
+      else currentSort = { col, dir: 1 };
+      
+      parsedData.contactos.sort((a, b) => {
+        let valA = a[col] || '';
+        let valB = b[col] || '';
+        if (typeof valA === 'number') return (valA - valB) * currentSort.dir;
+        return valA.toString().localeCompare(valB.toString()) * currentSort.dir;
+      });
+      
+      renderContactsTable();
+    };
+    
+    // Select all
+    document.getElementById('selectAll').addEventListener('change', (e) => {
+      document.querySelectorAll('.row-select').forEach(cb => cb.checked = e.target.checked);
+    });
+    
+    // Listeners para selects de gestor
+    document.addEventListener('change', (e) => {
+      if (e.target.classList.contains('gestor-select')) {
+        const index = parseInt(e.target.dataset.index);
+        const selected = Array.from(e.target.selectedOptions).map(opt => opt.value);
+        parsedData.contactos[index].gestorAsignado = selected;
+      }
+    });
+    
+    // Guardar
+    document.getElementById('saveAll').addEventListener('click', saveContacts);
+    document.getElementById('saveSelected').addEventListener('click', () => {
+      const selected = Array.from(document.querySelectorAll('.row-select:checked')).map(cb => parseInt(cb.dataset.index));
+      if (selected.length === 0) return alert('Selecciona contactos');
+      saveContacts(selected);
+    });
+    
+    async function saveContacts(selectedIndices = null) {
+      const batch = [];
+      const contactsToSave = selectedIndices ? 
+        selectedIndices.map(i => parsedData.contactos[i]) : 
+        parsedData.contactos;
+      
+      for (const contacto of contactsToSave) {
+        const docId = contacto.id || contacto.noContrato || crypto.randomUUID();
+        contacto.id = docId;
+        
+        // Relacionar dispositivos y telefonos
+        contacto.dispositivos = parsedData.dispositivos.filter(d => d.nocontrato === contacto.noContrato).map(d => d.id || d.noserie);
+        contacto.telefonos = parsedData.telefonos.filter(t => t.nocontrato === contacto.noContrato).map(t => t.numero);
+        
+        batch.push(setDoc(doc(db, 'debug_contactos', docId), contacto, { merge: true }));
+        
+        // Guardar relacionados
+        parsedData.dispositivos.filter(d => d.nocontrato === contacto.noContrato).forEach(d => {
+          d.idContacto = docId;
+          batch.push(setDoc(doc(db, 'debug_dispositivos', d.id || d.noserie), d, { merge: true }));
+        });
+        
+        parsedData.telefonos.filter(t => t.nocontrato === contacto.noContrato).forEach(t => {
+          batch.push(setDoc(doc(db, 'debug_telefonos', t.numero), t, { merge: true }));
+        });
+      }
+      
+      // Ejecutar en batches de 500
+      for (let i = 0; i < batch.length; i += 500) {
+        await Promise.all(batch.slice(i, i + 500));
+      }
+      
+      alert(`Guardados ${contactsToSave.length} contactos exitosamente`);
+      contactosEnFirestore = new Set(contactsToSave.map(c => c.id));
+      renderContactsTable();
+    }
+    
+    function renderDistribution() {
+      const distribution = {};
+      parsedData.contactos.forEach(c => {
+        const seg = c.segmento || 'UNSPECIFIED';
+        const gest = c.gestorAsignado?.[0] || 'Sin asignar';
+        if (!distribution[seg]) distribution[seg] = {};
+        if (!distribution[seg][gest]) distribution[seg][gest] = 0;
+        distribution[seg][gest]++;
+      });
+      
+      const preview = document.getElementById('distributionPreview');
+      preview.innerHTML = Object.entries(distribution).flatMap(([seg, gestores]) => 
+        Object.entries(gestores).map(([gest, count]) => `
+          <div class="stat-card">
+            <div>${seg}</div>
+            <div style="font-size:1.5rem;">${gest}: ${count}</div>
+          </div>
+        `)
+      ).join('');
+      
+      document.getElementById('distributionSection').classList.remove('hidden');
+    }
+  </scrip>
+</body>
+</html>
