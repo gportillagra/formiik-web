@@ -1,336 +1,662 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador Excel - Contactos Formiik</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
-    <script type="module" src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-    <script type="module" src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="config.js" defer></script>
-    <style>
-        .date-input-group {
-            position: relative;
-            width: 160px;
-        }
-        .date-input-group i {
-            position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #6c757d;
-            z-index: 4;
-            pointer-events: none;
-        }
-        .date-input-group input {
-            padding-right: 35px;
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Formiik Web - Exportar Contactos</title>
+
+  <meta property="og:title" content="Formiik Web - Exportar Contactos" />
+  <meta property="og:description" content="Genera Excel de contactos filtrados por fecha" />
+
+  <link rel="icon" href="/img/Icon.png" />
+  <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" rel="stylesheet" />
+
+  <script src="./config.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <style>
+    :root {
+      --formiik-soft-red: #FF8F8F;
+      --formiik-soft-yellow: #FFF1CB;
+      --formiik-soft-blue: #C2E2FA;
+      --formiik-soft-purple: #B7A3E3;
+      --formiik-primary: #A78BFA;
+      --formiik-primary-dark: #8B5CF6;
+      --formiik-gradient: linear-gradient(135deg, var(--formiik-primary), var(--formiik-soft-red));
+      --glass-bg: rgba(255, 255, 255, 0.82);
+      --glass-border: rgba(255, 255, 255, 0.30);
+      --text-muted: #64748b;
+      --row-even: rgba(167, 139, 250, 0.06);
+      --row-hover: rgba(167, 139, 250, 0.18);
+      --row-selected: rgba(167, 139, 250, 0.28);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      background: 
+        radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.25) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.25) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.25) 0%, transparent 50%),
+        linear-gradient(135deg, var(--formiik-soft-blue) 0%, var(--formiik-soft-yellow) 50%, var(--formiik-soft-red) 100%);
+      color: #1e293b;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at 25% 25%, rgba(255,255,255,0.12) 0%, transparent 50%),
+                  radial-gradient(circle at 75% 75%, rgba(255,255,255,0.08) 0%, transparent 50%);
+      z-index: -2;
+      animation: shimmer 22s ease-in-out infinite;
+    }
+
+    @keyframes shimmer {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.85; transform: scale(1.03); }
+    }
+
+    #loadingScreen {
+      position: fixed;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+
+    .spinner {
+      width: 60px; height: 60px;
+      border: 6px solid rgba(167,139,250,0.2);
+      border-top: 6px solid var(--formiik-primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 1.5rem;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 70px;
+      background: rgba(255,255,255,0.94);
+      backdrop-filter: blur(16px) saturate(180%);
+      border-bottom: 1px solid var(--glass-border);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+    }
+
+    .logo { display: flex; align-items: center; gap: 12px; }
+    .logo-img { height: 42px; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.12)); transition: transform 0.3s ease; }
+    .logo-img:hover { transform: scale(1.05); }
+
+    .logo-text {
+      font-size: 1.45rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #1e1b4b, #4338ca);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .user-section { display: flex; align-items: center; gap: 1.5rem; }
+    .user-info { display: flex; align-items: center; gap: 10px; }
+    .user-name {
+      font-weight: 600;
+      color: #1e293b;
+      max-width: 180px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--formiik-gradient);
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 1.15rem;
+      box-shadow: 0 4px 12px rgba(167,139,250,0.35);
+      transition: transform 0.2s ease;
+    }
+    .avatar:hover { transform: scale(1.08); }
+
+    .logout-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(239,68,68,0.12);
+      color: #dc2626;
+      border: 1px solid rgba(239,68,68,0.3);
+      padding: 0.65rem 1.3rem;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+    .logout-btn:hover {
+      background: rgba(239,68,68,0.22);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(239,68,68,0.2);
+    }
+    .logout-icon { font-size: 1.3rem; display: none; }
+
+    main {
+      margin-top: 70px;
+      padding: 2.5rem 2.5rem 4rem;
+      min-height: calc(100vh - 70px);
+    }
+
+    .page-title {
+      font-size: 2.1rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #1e1b4b, #4338ca);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+    }
+
+    .page-pretitle { color: var(--text-muted); font-size: 1.1rem; margin-bottom: 2rem; }
+
+    .card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(18px) saturate(180%);
+      border-radius: 24px;
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      align-items: center;
+    }
+
+    .date-input-group {
+      position: relative;
+      width: 180px;
+    }
+
+    .date-input-group i {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .date-input-group input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      padding-right: 40px;
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      background: rgba(255,255,255,0.4);
+      backdrop-filter: blur(8px);
+    }
+
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border-radius: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-primary { background: var(--formiik-primary); color: white; }
+    .btn-primary:hover:not(:disabled) { background: var(--formiik-primary-dark); transform: translateY(-1px); }
+    .btn-success { background: #22c55e; color: white; }
+    .btn-success:hover:not(:disabled) { background: #16a34a; transform: translateY(-1px); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(18px);
+      border-radius: 20px;
+      border: 1px solid var(--glass-border);
+      padding: 1.5rem;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
+
+    .stat-number { font-size: 2.4rem; font-weight: 800; color: var(--formiik-primary-dark); margin: 0.5rem 0; }
+    .stat-label { color: var(--text-muted); font-size: 0.95rem; }
+
+    .table-card .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.25rem 2rem;
+      border-bottom: 1px solid var(--glass-border);
+    }
+
+    .card-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--formiik-primary-dark);
+    }
+
+    .table-responsive {
+      overflow-x: auto;
+      max-height: 60vh;
+      position: relative;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      table-layout: auto;
+    }
+
+    thead {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--glass-bg);
+      backdrop-filter: blur(10px);
+    }
+
+    th, td {
+      padding: 0.9rem 1.2rem;
+      text-align: left;
+      border-bottom: 1px solid var(--glass-border);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    th {
+      background: rgba(167,139,250,0.22);
+      color: var(--formiik-primary-dark);
+      font-weight: 600;
+    }
+
+    tr {
+      background: white;
+      transition: background 0.15s ease;
+      cursor: pointer;
+    }
+
+    tr:nth-child(even) { background: var(--row-even); }
+    tr:hover { background: var(--row-hover) !important; }
+    tr.selected { background: var(--row-selected) !important; font-weight: 500; }
+
+    .status { margin: 1rem 0; min-height: 3rem; }
+
+    .alert {
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--glass-border);
+    }
+
+    .alert-success { border-left: 5px solid #22c55e; }
+    .alert-danger  { border-left: 5px solid #ef4444; }
+    .alert-info    { border-left: 5px solid var(--formiik-primary); }
+    .alert-warning { border-left: 5px solid #f59e0b; }
+
+    footer {
+      padding: 2rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.92rem;
+      border-top: 1px solid var(--glass-border);
+      background: rgba(255,255,255,0.3);
+      backdrop-filter: blur(10px);
+    }
+
+    /* ────────────────────────────────────────
+       Media Queries - igual que en la plantilla original
+    ──────────────────────────────────────── */
+    @media (max-width: 768px) {
+      header {
+        padding: 0 1.2rem;
+        height: 64px;
+      }
+      .logo-img { height: 38px; }
+      .logo-text { font-size: 1.3rem; }
+      .user-name { max-width: 120px; font-size: 0.95rem; }
+      .avatar { width: 40px; height: 40px; font-size: 1rem; }
+      .logout-btn {
+        padding: 0.6rem 0.9rem;
+        min-width: 44px;
+      }
+      .logout-text { display: none; }
+      .logout-icon { display: inline-block; }
+      .user-section { gap: 1rem; }
+      main { padding: 1.5rem 1.2rem; }
+      .controls { flex-direction: column; align-items: stretch; }
+      .date-input-group { width: 100%; }
+    }
+
+    @media (max-width: 480px) {
+      .user-name { display: none; }
+      .logout-btn { padding: 0.55rem 0.8rem; }
+      .avatar { width: 36px; height: 36px; }
+    }
+  </style>
 </head>
 <body>
-    <div class="page">
-        <!-- Sidebar -->
-        <aside class="navbar navbar-vertical navbar-expand-lg navbar-dark">
-            <div class="container-fluid">
-                <div class="navbar-brand-wrapper">
-                    <a href="#" class="navbar-brand logo logo-lg" aria-label="Home">
-                        <strong class="navbar-brand-regular">Formiik</strong>
-                        <strong class="navbar-brand-collapsed">F</strong>
-                    </a>
-                </div>
-            </div>
-        </aside>
 
-        <div class="page-wrapper">
-            <!-- Header -->
-            <div class="page-header d-print-none">
-                <div class="container-fluid">
-                    <div class="row g-2 align-items-center">
-                        <div class="col">
-                            <h2 class="page-title mb-1">Contactos con Dictamen</h2>
-                            <div class="page-pretitle">
-                                Exporta a Excel contactos filtrados por dictamen y fecha
-                            </div>
-                        </div>
-                        <div class="col-auto ms-sm-auto">
-                            <div class="btn-list">
-                                <div class="date-input-group me-2">
-                                    <i class="ti ti-calendar-event"></i>
-                                    <input type="date" id="fechaFilter" class="form-control form-control-sm" 
-                                           placeholder="Desde fecha dictamen">
-                                </div>
-                                <button id="loadBtn" class="btn btn-primary">
-                                    <i class="ti ti-database-import me-2"></i>Cargar Datos
-                                </button>
-                                <button id="generateBtn" class="btn btn-success" disabled>
-                                    <i class="ti ti-file-spreadsheet me-2"></i>Generar Excel
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+  <div id="loadingScreen">
+    <div class="spinner"></div>
+    <p>Verificando sesión y cargando...</p>
+  </div>
 
-            <!-- Content -->
-            <div class="page-body">
-                <div class="container-fluid">
-                    <!-- Stats Cards -->
-                    <div class="row row-cards row-deck">
-                        <div class="col-md-3 col-sm-6">
-                            <div class="card">
-                                <div class="card-body">
-                                    <div class="d-flex align-items-center">
-                                        <span class="avatar bg-blue avatar-rounded-start">
-                                            <i class="ti ti-users fs-4"></i>
-                                        </span>
-                                        <div class="ms-3">
-                                            <h3 id="totalCount" class="mb-0 lh-1 fs-3">0</h3>
-                                            <small class="text-muted">Contactos cargados</small>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3 col-sm-6">
-                            <div class="card">
-                                <div class="card-body">
-                                    <div class="d-flex align-items-center">
-                                        <span class="avatar bg-green avatar-rounded-start">
-                                            <i class="ti ti-checks fs-4"></i>
-                                        </span>
-                                        <div class="ms-3">
-                                            <h3 id="successCount" class="mb-0 lh-1 fs-3">0</h3>
-                                            <small class="text-muted">Listos para exportar</small>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+  <div id="mainContent" style="display: none;">
 
-                    <!-- Main Card -->
-                    <div class="row row-cards">
-                        <div class="col-12">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h3 class="card-title">
-                                        <i class="ti ti-table me-2"></i>Lista de Contactos
-                                    </h3>
-                                </div>
-                                <div class="card-body border-bottom py-1">
-                                    <div class="d-flex">
-                                        <div id="status" class="flex-fill"></div>
-                                        <div class="btn-list ms-auto">
-                                            <span id="recordsInfo" class="badge bg-azure text-xs">0 registros</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="table-responsive">
-                                    <table class="table card-table table-vcenter table-hover datatable">
-                                        <thead class="table-dark">
-                                            <tr>
-                                                <th class="w-1">Contrato</th>
-                                                <th class="w-1">Asignación</th>
-                                                <th class="w-2">Nombre</th>
-                                                <th>Dictamen</th>
-                                                <th class="w-1">Fecha</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="tableBody">
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <header>
+      <div class="logo">
+        <img src="./img/icon.png" alt="Formiik" class="logo-img">
+        <span class="logo-text">Formiik Web</span>
+      </div>
+
+      <div class="user-section">
+        <div class="user-info">
+          <span class="user-name" id="userName">Cargando...</span>
+          <div class="avatar" id="userAvatar">U</div>
         </div>
-    </div>
 
-    <!-- Backdrop -->
-    <div class="backdrop" hidden></div>
+        <button id="logoutBtn" class="logout-btn" title="Cerrar sesión">
+          <span class="logout-text">Cerrar sesión</span>
+          <i class="ti ti-logout logout-icon"></i>
+        </button>
+      </div>
+    </header>
 
-    <script>
-        let db;
-        let contactosData = [];
+    <main>
+      <h1 class="page-title">Contactos</h1>
+      <div class="page-pretitle">Exporta a Excel todos los contactos (o filtrados por fecha)</div>
 
-        async function initFirebase(config) {
-            try {
-                firebase.initializeApp(config);
-                db = firebase.firestore();
-                showStatus('Firebase conectado correctamente', 'success');
-                document.getElementById('loadBtn').disabled = false;
-            } catch (error) {
-                showStatus('Error conectando Firebase: ' + error.message, 'danger');
-                console.error(error);
-            }
+      <div class="card">
+        <div class="controls">
+          <div class="date-input-group">
+            <i class="ti ti-calendar-event"></i>
+            <input type="date" id="fechaFilter" placeholder="Desde fecha">
+          </div>
+          <button id="loadBtn" class="btn btn-primary" disabled>
+            <i class="ti ti-database-import"></i> Cargar Datos
+          </button>
+          <button id="generateBtn" class="btn btn-success" disabled>
+            <i class="ti ti-file-spreadsheet"></i> Generar Excel
+          </button>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-number" id="totalCount">0</div>
+            <div class="stat-label">Contactos cargados</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="successCount">0</div>
+            <div class="stat-label">Listos para exportar</div>
+          </div>
+        </div>
+
+        <div class="card table-card">
+          <div class="card-header">
+            <h3 class="card-title"><i class="ti ti-table me-2"></i>Lista de Contactos</h3>
+            <span id="recordsInfo" class="badge" style="background:#a78bfa; color:white; padding:0.5rem 1rem; border-radius:999px;">0 registros</span>
+          </div>
+          <div class="status" id="status"></div>
+          <div class="table-responsive">
+            <table id="contactTable">
+              <thead>
+                <tr>
+                  <th>Contrato</th>
+                  <th>Asignación</th>
+                  <th>Nombre</th>
+                  <th>Dictamen</th>
+                  <th>Fecha Dictamen</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <p>© 2026 Formiik Web • v1.0.0 • Exportador de Contactos</p>
+    </footer>
+
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { getFirestore, collection, query, where, getDocs, Timestamp, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let contactosData = [];
+    let selectedRow = null;
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = './login.html';
+        return;
+      }
+
+      let displayName = user.email?.split('@')[0] || 'Usuario';
+      let photoUrl = null;
+
+      try {
+        const userDocRef = doc(db, "usuarios", user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists()) {
+          const data = userDocSnap.data();
+          if (data.displayName) displayName = data.displayName;
+          if (data.photoUrl) photoUrl = data.photoUrl;
+        }
+      } catch (error) {
+        console.error("Error leyendo perfil:", error);
+      }
+
+      document.getElementById('userName').textContent = displayName;
+      if (photoUrl) {
+        const avatar = document.getElementById('userAvatar');
+        avatar.style.background = `url(${photoUrl}) center/cover no-repeat`;
+        avatar.textContent = '';
+      }
+
+      document.getElementById('loadingScreen').style.display = 'none';
+      document.getElementById('mainContent').style.display = 'block';
+      document.getElementById('loadBtn').disabled = false;
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('logoutBtn').addEventListener('click', async () => {
+        try {
+          await signOut(auth);
+          window.location.href = './login.html';
+        } catch (error) {
+          console.error("Error logout:", error);
+        }
+      });
+
+      document.getElementById('loadBtn').addEventListener('click', loadData);
+      document.getElementById('generateBtn').addEventListener('click', exportToExcel);
+
+      document.getElementById('tableBody').addEventListener('click', (e) => {
+        const row = e.target.closest('tr');
+        if (!row) return;
+        if (selectedRow) selectedRow.classList.remove('selected');
+        row.classList.add('selected');
+        selectedRow = row;
+      });
+    });
+
+    async function loadData() {
+      const loadBtn = document.getElementById('loadBtn');
+      const fechaFilter = document.getElementById('fechaFilter').value;
+      
+      loadBtn.disabled = true;
+      showStatus('Cargando contactos...', 'info');
+
+      try {
+        let q = query(collection(db, 'contactos'));
+
+        if (fechaFilter) {
+          const fechaInicio = new Date(fechaFilter + 'T00:00:00.000Z');
+          q = query(q, where('fechaDictamen', '>=', Timestamp.fromDate(fechaInicio)));
+          showStatus(`Filtrando desde ${fechaFilter}...`, 'info');
         }
 
-        async function loadData() {
-            document.getElementById('loadBtn').disabled = true;
-            const fechaFilter = document.getElementById('fechaFilter').value;
-            showStatus('Conectando a Firestore y cargando contactos...', 'info');
-            
-            try {
-                // ✅ Query base
-                let query = db.collection('contactos')
-                    .where('dictamen', '!=', 'UNSPECIFIED');
-                
-                // ✅ Filtro Timestamp aplicado directamente al query
-                if (fechaFilter) {
-                    const fechaInicio = new Date(fechaFilter + 'T00:00:00.000Z');
-                    query = query.where('fechaDictamen', '>=', firebase.firestore.Timestamp.fromDate(fechaInicio));
-                    showStatus(`🔍 Filtrando desde ${fechaFilter}`, 'info');
-                }
-                
-                const snapshot = await query.get();
-                
-                const tbody = document.getElementById('tableBody');
-                tbody.innerHTML = '';
-                contactosData = [];
-                
-                if (snapshot.empty) {
-                    const msg = fechaFilter ? `No hay contactos desde ${fechaFilter}` : 'No se encontraron contactos con dictamen';
-                    showStatus(msg, 'warning');
-                    updateStats(0, 0);
-                    return;
-                }
+        const snapshot = await getDocs(q);
 
-                snapshot.forEach(doc => {
-                    const contacto = doc.data();
-                    const fechaStr = contacto.fechaDictamen ? contacto.fechaDictamen.toDate().toLocaleDateString('es-MX') : '';
-                    
-                    const row = tbody.insertRow();
-                    const cells = [
-                        contacto.noContrato || '',
-                        contacto.idAsignacion || '',
-                        contacto.nombre || '',
-                        contacto.dictamen || '',
-                        fechaStr
-                    ];
-                    
-                    cells.forEach((text, i) => {
-                        const cell = row.insertCell(i);
-                        cell.textContent = text;
-                        cell.className = 'text-truncate';
-                    });
-                    
-                    contactosData.push({
-                        noContrato: contacto.noContrato || '',
-                        idAsignacion: contacto.idAsignacion || '',
-                        nombre: contacto.nombre || '',
-                        dictamen: contacto.dictamen || '',
-                        fechaDictamen: fechaStr
-                    });
-                });
-                
-                updateStats(contactosData.length, contactosData.length);
-                const filtroMsg = fechaFilter ? `desde ${fechaFilter}` : 'todos';
-                showStatus(`✅ Cargados ${contactosData.length} contactos (${filtroMsg})`, 'success');
-                document.getElementById('generateBtn').disabled = false;
-                
-            } catch (error) {
-                showStatus('❌ Error al cargar datos: ' + error.message, 'danger');
-                console.error(error);
-            } finally {
-                document.getElementById('loadBtn').disabled = false;
-            }
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+        contactosData = [];
+        selectedRow = null;
+
+        if (snapshot.empty) {
+          const msg = fechaFilter ? `No hay contactos desde ${fechaFilter}` : 'No se encontraron contactos';
+          showStatus(msg, 'warning');
+          updateStats(0);
+          return;
         }
 
-        function updateStats(total, success) {
-            document.getElementById('totalCount').textContent = total;
-            document.getElementById('successCount').textContent = success;
-            document.getElementById('recordsInfo').textContent = `${total} registros`;
-            document.getElementById('recordsInfo').className = total > 0 ? 'badge bg-success text-xs' : 'badge bg-muted text-xs';
-        }
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          const fechaStr = data.fechaDictamen 
+            ? data.fechaDictamen.toDate().toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' }) 
+            : '';
 
-        function showStatus(message, type = 'info') {
-            const status = document.getElementById('status');
-            const icon = type === 'success' ? '✅' : type === 'danger' ? '❌' : type === 'warning' ? '⚠️' : '⏳';
-            status.innerHTML = `<div class="alert alert-${type} alert-dismissible alert-small" role="alert">
-                <span>${icon} ${message}</span>
-            </div>`;
-        }
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${data.noContrato || ''}</td>
+            <td>${data.idAsignacion || ''}</td>
+            <td>${data.nombre || ''}</td>
+            <td>${data.dictamen || ''}</td>
+            <td>${fechaStr}</td>
+          `;
+          tbody.appendChild(row);
 
-        function exportToExcel() {
-            if (contactosData.length === 0) {
-                showStatus('No hay datos para exportar', 'warning');
-                return;
-            }
-
-            // Crear hoja con formato profesional
-            const ws = XLSX.utils.json_to_sheet(contactosData);
-            
-            // ✅ Estilo encabezados (fila 0)
-            const range = XLSX.utils.decode_range(ws['!ref']);
-            for(let C = range.s.c; C <= range.e.c; ++C) {
-                const cell_address = XLSX.utils.encode_cell({c:C,r:0});
-                if(!ws[cell_address]) continue;
-                ws[cell_address].s = {
-                    font: { bold: true, color: { rgb: "FFFFFF" } },
-                    fill: { fgColor: { rgb: "4472C4" } },
-                    alignment: { horizontal: "center", vertical: "center", wrapText: true }
-                };
-            }
-            
-            // ✅ Autoajustar ancho columnas
-            const colWidths = [];
-            const headers = Object.keys(contactosData[0] || {});
-            headers.forEach((header, i) => {
-                let maxLength = header.length;
-                contactosData.forEach(row => {
-                    const value = row[header]?.toString() || '';
-                    maxLength = Math.max(maxLength, value.length);
-                });
-                colWidths[i] = { wch: Math.min(Math.max(maxLength + 2, 12), 50) };
-            });
-            ws['!cols'] = colWidths;
-            
-            // ✅ Bordes y formato filas
-            for(let R = range.s.r + 1; R <= range.e.r; ++R) {
-                for(let C = range.s.c; C <= range.e.c; ++C) {
-                    const cell_address = XLSX.utils.encode_cell({c:C,r:R});
-                    if(!ws[cell_address]) continue;
-                    if(!ws[cell_address].s) ws[cell_address].s = {};
-                    ws[cell_address].s = {
-                        border: {
-                            top: { style: 'thin', color: { rgb: "DDDDDD" } },
-                            bottom: { style: 'thin', color: { rgb: "DDDDDD" } },
-                            left: { style: 'thin', color: { rgb: "DDDDDD" } },
-                            right: { style: 'thin', color: { rgb: "DDDDDD" } }
-                        },
-                        alignment: { horizontal: "left", vertical: "center", wrapText: true }
-                    };
-                    // Alternar color filas
-                    if (R % 2 === 1) {
-                        ws[cell_address].s.fill = { fgColor: { rgb: "F2F2F2" } };
-                    }
-                }
-            }
-            
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Dictamen_cuentas');
-            
-            const fechaFilter = document.getElementById('fechaFilter').value;
-            const filename = `dictamen_cuentas_xalapa_${fechaFilter || 'todos'}_${new Date().toISOString().split('T')[0]}.xlsx`;
-            
-            XLSX.writeFile(wb, filename);
-            showStatus(`📊 Excel descargado (${contactosData.length} registros)`, 'success');
-        }
-
-        // Event Listeners
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('loadBtn').addEventListener('click', loadData);
-            document.getElementById('generateBtn').addEventListener('click', exportToExcel);
-            
-            // Load config and init
-            if (typeof firebaseConfig !== 'undefined') {
-                initFirebase(firebaseConfig);
-            }
+          contactosData.push({
+            noContrato: data.noContrato || '',
+            idAsignacion: data.idAsignacion || '',
+            nombre: data.nombre || '',
+            dictamen: data.dictamen || '',
+            fechaDictamen: fechaStr
+          });
         });
-    </script>
+
+        updateStats(contactosData.length);
+        showStatus(`Cargados ${contactosData.length} contactos`, 'success');
+        document.getElementById('generateBtn').disabled = false;
+
+      } catch (err) {
+        console.error(err);
+        showStatus('Error al cargar: ' + err.message, 'danger');
+      } finally {
+        loadBtn.disabled = false;
+      }
+    }
+
+    function updateStats(total) {
+      document.getElementById('totalCount').textContent = total;
+      document.getElementById('successCount').textContent = total;
+      document.getElementById('recordsInfo').textContent = `${total} registros`;
+    }
+
+    function showStatus(message, type = 'info') {
+      const status = document.getElementById('status');
+      const icons = { success: '✅', danger: '❌', info: '⏳', warning: '⚠️' };
+      status.innerHTML = `
+        <div class="alert alert-${type}">
+          <strong>${icons[type] || '⏳'} ${message}</strong>
+        </div>
+      `;
+    }
+
+    function exportToExcel() {
+      if (!contactosData.length) return showStatus('No hay datos para exportar', 'warning');
+
+      const ws = XLSX.utils.json_to_sheet(contactosData);
+      const range = XLSX.utils.decode_range(ws['!ref']);
+
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cell = XLSX.utils.encode_cell({c:C, r:0});
+        if (ws[cell]) ws[cell].s = {
+          font: { bold: true, color: { rgb: "FFFFFF" } },
+          fill: { fgColor: { rgb: "4472C4" } },
+          alignment: { horizontal: "center", vertical: "center" }
+        };
+      }
+
+      const colWidths = [];
+      const headers = Object.keys(contactosData[0] || {});
+      headers.forEach((h, i) => {
+        let max = h.length;
+        contactosData.forEach(row => max = Math.max(max, (row[h]||'').toString().length));
+        colWidths[i] = { wch: Math.min(Math.max(max + 4, 12), 60) };
+      });
+      ws['!cols'] = colWidths;
+
+      for (let R = 1; R <= range.e.r; ++R) {
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          const cell = XLSX.utils.encode_cell({c:C, r:R});
+          if (ws[cell]) {
+            ws[cell].s = {
+              border: { top: {style:"thin"}, bottom: {style:"thin"}, left: {style:"thin"}, right: {style:"thin"} },
+              alignment: { horizontal: "left", vertical: "center" }
+            };
+            if (R % 2 === 1) ws[cell].s.fill = { fgColor: { rgb: "F9FAFB" } };
+          }
+        }
+      }
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Contactos");
+      const fecha = document.getElementById('fechaFilter').value || 'todos';
+      XLSX.writeFile(
+        wb,
+        `dictamen_cuentas_${new Date().toISOString().split('T')[0]}.xlsx`
+      );
+      showStatus(`Excel generado (${contactosData.length} registros)`, 'success');
+    }
+  </script>
+
 </body>
 </html>
