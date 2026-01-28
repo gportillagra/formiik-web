@@ -3,93 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Formiik Web - Dashboard</title>
+  <title>Formiik Web - Equipos Recuperados</title>
 
-  <meta property="og:title" content="Formiik Web - Panel" />
-  <meta property="og:description" content="Panel de gestión empresarial en tiempo real." />
+  <meta property="og:title" content="Formiik Web - Equipos Recuperados" />
+  <meta property="og:description" content="Visor y gestión de equipos recuperados por prealerta" />
   <meta property="og:image" content="/img/Icon.png" />
 
   <link rel="icon" href="/img/Icon.png" />
   <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" rel="stylesheet" />
 
   <script src="./config.js"></script>
-
-  <!-- Firebase SDK - Auth + Firestore -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
-    const loadingScreen = document.getElementById('loadingScreen');
-    const mainContent = document.getElementById('mainContent');
-
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        window.location.href = './login.html';
-        return;
-      }
-
-      // Usuario autenticado → leer documento en /usuarios/{uid}
-      try {
-        const userDocRef = doc(db, "usuarios", user.uid);
-        const userDocSnap = await getDoc(userDocRef);
-
-        let displayName = user.email?.split('@')[0] || 'Usuario';
-        let photoUrl = null;
-        let rol = 'GESTOR';  // valor por defecto según tu data class
-        let plaza = 'XALAPA';
-
-        if (userDocSnap.exists()) {
-          const data = userDocSnap.data();
-
-          // Prioridad: displayName de Firestore > fallback
-          if (data.displayName) {
-            displayName = data.displayName;
-          }
-
-          if (data.photoUrl) {
-            photoUrl = data.photoUrl;
-          }
-
-          if (data.rolUsuario) {
-            rol = data.rolUsuario;  // GESTOR o ADMINISTRADOR
-          }
-
-          if (data.plaza) {
-            plaza = data.plaza;
-          }
-        } else {
-          console.warn("No se encontró documento de usuario en /usuarios/" + user.uid);
-        }
-
-        // Actualizar interfaz
-        document.getElementById('userName').textContent = displayName;
-
-        if (photoUrl) {
-          const avatarEl = document.getElementById('userAvatar');
-          avatarEl.style.background = `url(${photoUrl}) center/cover no-repeat`;
-          avatarEl.textContent = '';  // quitar iniciales
-          avatarEl.style.backgroundSize = 'cover';
-        }
-
-        // Opcional: podrías mostrar rol o plaza en algún lugar
-        // Ejemplo: document.getElementById('userRole').textContent = rol;
-
-      } catch (error) {
-        console.error("Error al leer documento de usuario:", error);
-        // Fallback: mostrar email parcial
-        document.getElementById('userName').textContent = user.email?.split('@')[0] || 'Usuario';
-      }
-
-      // Mostrar contenido
-      loadingScreen.style.display = 'none';
-      mainContent.style.display = 'block';
-    });
-  </script>
 
   <style>
     :root {
@@ -131,7 +54,6 @@
       50% { opacity: 0.85; transform: scale(1.03); }
     }
 
-    /* Loading */
     #loadingScreen {
       position: fixed;
       inset: 0;
@@ -157,7 +79,6 @@
 
     #loadingScreen p { font-size: 1.3rem; font-weight: 600; color: var(--formiik-primary-dark); }
 
-    /* Header */
     header {
       position: fixed;
       top: 0; left: 0; right: 0;
@@ -175,12 +96,7 @@
 
     .logo { display: flex; align-items: center; gap: 12px; }
 
-    .logo-img {
-      height: 42px;
-      filter: drop-shadow(0 4px 10px rgba(0,0,0,0.12));
-      transition: transform 0.3s ease;
-    }
-
+    .logo-img { height: 42px; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.12)); transition: transform 0.3s ease; }
     .logo-img:hover { transform: scale(1.05); }
 
     .logo-text {
@@ -205,8 +121,7 @@
     }
 
     .avatar {
-      width: 44px;
-      height: 44px;
+      width: 44px; height: 44px;
       border-radius: 50%;
       background: var(--formiik-gradient);
       background-size: cover;
@@ -246,11 +161,7 @@
 
     .logout-icon { font-size: 1.3rem; display: none; }
 
-    main {
-      margin-top: 70px;
-      padding: 2.5rem 2.5rem 4rem;
-      min-height: calc(100vh - 70px);
-    }
+    main { margin-top: 70px; padding: 2.5rem 2.5rem 4rem; min-height: calc(100vh - 70px); }
 
     .page-title {
       font-size: 2.1rem;
@@ -287,6 +198,135 @@
       backdrop-filter: blur(10px);
     }
 
+    /* Filtros responsivos */
+    .filters-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .filter-group label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 0.6rem;
+      color: var(--formiik-primary-dark);
+    }
+
+    select.form-select {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      border: 1px solid rgba(167,139,250,0.3);
+      background: white;
+      font-size: 1rem;
+    }
+
+    #btnFilter {
+      grid-column: 1 / -1;
+      padding: 1rem;
+      font-size: 1.1rem;
+      background: var(--formiik-primary);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.25s;
+    }
+
+    #btnFilter:hover { background: var(--formiik-primary-dark); transform: translateY(-2px); }
+
+    /* Tabla */
+    .table-container {
+      overflow-x: auto;
+      overflow-y: auto;
+      max-height: 65vh;
+      border-radius: 16px;
+      background: white;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      position: relative;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: auto;
+      border-spacing: 0;
+    }
+
+    th, td {
+      padding: 0.9rem 1.1rem;
+      text-align: left;
+      border-bottom: 1px solid rgba(226,232,240,0.6);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      color: var(--formiik-primary-dark);
+      font-weight: 600;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+      border-bottom: 2px solid rgba(167,139,250,0.3);
+    }
+
+    /* Eliminado el sticky de la primera columna */
+    /* th:first-child, td:first-child { ... } → comentado o eliminado */
+
+    tbody tr:hover {
+      background: rgba(167,139,250,0.05);
+    }
+
+    .status-select {
+      padding: 0.5rem 0.8rem;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      background: white;
+      font-size: 0.9rem;
+      min-width: 110px;
+    }
+
+    .status-abierta     { background: #fef3c7; color: #92400e; }
+    .status-revision    { background: #dbeafe; color: #1e40af; }
+    .status-autorizado  { background: #dcfce7; color: #166534; }
+    .status-rechazado   { background: #fee2e2; color: #991b1b; }
+    .status-pagado      { background: #dcfce7; color: #166534; }
+
+    .saving-indicator { font-size: 0.8rem; margin-left: 0.8rem; }
+
+    .no-results, .loading-msg { text-align: center; padding: 3rem 1rem; color: #64748b; font-size: 1.1rem; }
+
+    #progressContainer { margin-top: 2rem; padding: 1.5rem; background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); display: none; }
+    #progressContainer.active { display: block; }
+
+    .progress-bar-outer { height: 28px; background: #e2e8f0; border-radius: 14px; overflow: hidden; }
+
+    #progressBar { height: 100%; width: 0%; background: #10b981; transition: width 0.4s ease; }
+
+    .progress-text { margin-top: 0.8rem; text-align: center; font-weight: 500; color: #475569; }
+
+    #btnGeneratePDF {
+      margin-top: 1.5rem;
+      width: 100%;
+      padding: 1.2rem;
+      font-size: 1.15rem;
+      background: #10b981;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.25s;
+    }
+
+    #btnGeneratePDF:hover { background: #059669; transform: translateY(-2px); }
+
+    /* Responsividad del header (como plantilla original) */
     @media (max-width: 768px) {
       header { padding: 0 1.2rem; height: 64px; }
       .logo-img { height: 38px; }
@@ -298,6 +338,18 @@
       .logout-icon { display: inline-block; }
       .user-section { gap: 1rem; }
       main { padding: 1.5rem 1.2rem; }
+      .table-container { max-height: 50vh; }
+
+      /* Filtros en una sola columna en móvil */
+      .filters-section {
+        grid-template-columns: 1fr;
+      }
+
+      #btnFilter {
+        margin-top: 1rem;
+        padding: 1.1rem;
+        font-size: 1.05rem;
+      }
     }
 
     @media (max-width: 480px) {
@@ -326,7 +378,7 @@
           <span class="user-name" id="userName">Cargando...</span>
           <div class="avatar" id="userAvatar">U</div>
         </div>
-
+        
         <button id="logoutBtn" class="logout-btn" title="Cerrar sesión">
           <span class="logout-text">Cerrar sesión</span>
           <i class="ti ti-logout logout-icon"></i>
@@ -335,48 +387,456 @@
     </header>
 
     <main>
-      <h1 class="page-title">Bienvenido al Panel</h1>
+      <h1 class="page-title">Visor de Equipos Recuperados</h1>
 
       <div class="card">
-        <h2 style="margin-bottom: 1.5rem; color: var(--formiik-primary-dark);">Resumen General</h2>
-        <p>Panel protegido: solo usuarios autenticados pueden ver este contenido.</p>
+        <div class="filters-section">
+          <div class="filter-group">
+            <label>Seleccionar Gestor</label>
+            <select id="selectGestor" class="form-select">
+              <option value="">Cargando...</option>
+            </select>
+          </div>
 
-        <div style="margin-top: 2rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
-          <div style="background: rgba(167,139,250,0.1); border-radius: 16px; padding: 1.5rem; text-align: center;">
-            <h3 style="color: var(--formiik-primary);">Cartera Activa</h3>
-            <p style="font-size: 2.2rem; font-weight: 800; margin: 0.5rem 0;">$1,245,870</p>
+          <div class="filter-group">
+            <label>Seleccionar Prealerta</label>
+            <select id="selectPrealerta" class="form-select" disabled>
+              <option value="">Primero selecciona un gestor</option>
+            </select>
           </div>
-          <div style="background: rgba(34,197,94,0.1); border-radius: 16px; padding: 1.5rem; text-align: center;">
-            <h3 style="color: #166534;">Cobranza Hoy</h3>
-            <p style="font-size: 2.2rem; font-weight: 800; margin: 0.5rem 0;">$87,430</p>
+
+          <button id="btnFilter" disabled>
+            <i class="ti ti-filter"></i> Filtrar equipos
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="table-container">
+          <div id="loadingMsg" class="loading-msg" style="display: none;">
+            <div class="spinner" style="width:40px;height:40px;margin:0 auto 1rem;"></div>
+            Cargando equipos...
           </div>
-          <div style="background: rgba(239,68,68,0.1); border-radius: 16px; padding: 1.5rem; text-align: center;">
-            <h3 style="color: #dc2626;">Vencidos</h3>
-            <p style="font-size: 2.2rem; font-weight: 800; margin: 0.5rem 0;">142</p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Contrato</th>
+                <th>Nombre</th>
+                <th>Tipo</th>
+                <th>Serie</th>
+                <th>Status</th>
+                <th>Fecha Recup.</th>
+                <th>Fuente</th>
+                <th>Control</th>
+              </tr>
+            </thead>
+            <tbody id="devicesTableBody"></tbody>
+          </table>
+
+          <div id="noResults" class="no-results" style="display: none;">
+            Selecciona gestor y prealerta para ver los equipos recuperados
           </div>
         </div>
+
+        <div id="progressContainer">
+          <div class="progress-bar-outer">
+            <div id="progressBar"></div>
+          </div>
+          <div class="progress-text">
+            <span id="progressText">0%</span> — <span id="progressStatus">Iniciando...</span>
+          </div>
+        </div>
+
+        <button id="btnGeneratePDF" disabled>
+          <i class="ti ti-file-pdf"></i> Generar PDF con Todas las Imágenes
+        </button>
       </div>
     </main>
 
     <footer>
-      <p>© 2026 Formiik Web • v1.0.0</p>
+      <p>© 2026 Formiik Web • Visor de imagenes</p>
     </footer>
 
   </div>
 
-  <script type="module">
-    import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-    const auth = getAuth();
+  <script type="module">
+    // ── Imports Firebase ────────────────────────────────────────────────────────
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import {
+      getFirestore,
+      collection,
+      doc,
+      getDocs,
+      onSnapshot,
+      updateDoc,
+      query,
+      where,
+      orderBy,
+      getDoc
+    } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let userRol = 'GESTOR';
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = './login.html';
+        return;
+      }
+
+      try {
+        const userDocRef = doc(db, "usuarios", user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        let displayName = user.email?.split('@')[0] || 'Usuario';
+        let photoUrl = null;
+
+        if (userDocSnap.exists()) {
+          const data = userDocSnap.data();
+          displayName = data.displayName || displayName;
+          photoUrl = data.photoUrl || null;
+          userRol = data.rolUsuario || 'GESTOR';
+        }
+
+        document.getElementById('userName').textContent = displayName;
+
+        if (photoUrl) {
+          const avatar = document.getElementById('userAvatar');
+          avatar.style.background = `url(${photoUrl}) center/cover no-repeat`;
+          avatar.textContent = '';
+        }
+      } catch (err) {
+        console.error("Error al leer perfil:", err);
+        document.getElementById('userName').textContent = user.email?.split('@')[0] || 'Usuario';
+      }
+
+      document.getElementById('loadingScreen').style.display = 'none';
+      document.getElementById('mainContent').style.display = 'block';
+
+      await loadGestores();
+    });
 
     document.getElementById('logoutBtn')?.addEventListener('click', async () => {
       try {
         await signOut(auth);
         window.location.href = './login.html';
-      } catch (error) {
-        console.error("Error al cerrar sesión:", error);
-        alert("No se pudo cerrar la sesión. Intenta de nuevo.");
+      } catch (err) {
+        console.error("Error logout:", err);
+        alert("No se pudo cerrar sesión");
       }
+    });
+
+    const statusOptions = [
+      { value: 'EDICION',    label: 'EDICIÓN'    },
+      { value: 'REVISION',   label: 'REVISIÓN'   },
+      { value: 'AUTORIZADO', label: 'AUTORIZADO' },
+      { value: 'RECHAZADO',  label: 'RECHAZADO'  },
+      { value: 'PAGADO',     label: 'PAGADO'     }
+    ];
+
+    let currentDevices = [];
+    let unsubscribeDevices = null;
+
+    async function imageUrlToBase64(url, maxWidth = 800, quality = 0.72) {
+      try {
+        const resp = await fetch(url);
+        if (!resp.ok) return null;
+        const blob = await resp.blob();
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.src = URL.createObjectURL(blob);
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let w = img.width, h = img.height;
+            if (w > maxWidth) { h *= maxWidth / w; w = maxWidth; }
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+          };
+          img.onerror = reject;
+        });
+      } catch {
+        return null;
+      }
+    }
+
+    async function loadGestores() {
+      const sel = document.getElementById('selectGestor');
+      sel.innerHTML = '<option value="">Cargando...</option>';
+
+      try {
+        let q;
+        if (userRol === 'ADMINISTRADOR') {
+          q = query(collection(db, 'usuarios'));
+        } else {
+          const currentUser = auth.currentUser;
+          if (!currentUser) throw new Error("No hay usuario autenticado");
+          q = query(collection(db, 'usuarios'), where('__name__', '==', currentUser.uid));
+        }
+
+        const snap = await getDocs(q);
+        sel.innerHTML = '<option value="">Selecciona un gestor</option>';
+
+        snap.forEach(d => {
+          const u = d.data();
+          const opt = document.createElement('option');
+          opt.value = u.email;
+          opt.textContent = u.displayName || u.email || 'Sin nombre';
+          sel.appendChild(opt);
+        });
+
+        if (userRol !== 'ADMINISTRADOR' && snap.size === 1) {
+          sel.value = snap.docs[0].data().email;
+          sel.dispatchEvent(new Event('change'));
+        }
+      } catch (err) {
+        console.error("Error cargando gestores:", err);
+        sel.innerHTML = '<option value="">Error al cargar</option>';
+      }
+    }
+
+    function resetBeforeFilter() {
+      currentDevices = [];
+      document.getElementById('devicesTableBody').innerHTML = '';
+      document.getElementById('noResults').style.display = 'none';
+      document.getElementById('loadingMsg').style.display = 'none';
+      document.getElementById('btnGeneratePDF').disabled = true;
+
+      if (unsubscribeDevices) {
+        unsubscribeDevices();
+        unsubscribeDevices = null;
+      }
+
+      const prog = document.getElementById('progressContainer');
+      prog.classList.remove('active');
+      document.getElementById('progressBar').style.width = '0%';
+      document.getElementById('progressText').textContent = '0%';
+      document.getElementById('progressStatus').textContent = 'Iniciando...';
+    }
+
+    window.updateDeviceStatus = async function(deviceId, newStatus) {
+      console.log(`Intentando actualizar ${deviceId} → ${newStatus}`);
+
+      const row = document.querySelector(`tr[data-device-id="${deviceId}"]`);
+      if (!row) return console.warn(`Fila no encontrada: ${deviceId}`);
+
+      const indicator = row.querySelector('.saving-indicator');
+      if (indicator) {
+        indicator.textContent = 'Guardando...';
+        indicator.style.color = '#10b981';
+        indicator.style.display = 'inline';
+      }
+
+      try {
+        await updateDoc(doc(db, 'dispositivos', deviceId), { 
+          status: newStatus,
+          ultimaActualizacion: new Date().toISOString()
+        });
+        console.log(`Éxito: ${deviceId} → ${newStatus}`);
+        if (indicator) {
+          indicator.textContent = 'Guardado ✓';
+          setTimeout(() => indicator.style.display = 'none', 1800);
+        }
+      } catch (err) {
+        console.error("Error actualización:", err.code, err.message);
+        if (indicator) {
+          indicator.textContent = `Error: ${err.code || '?'}`;
+          indicator.style.color = '#ef4444';
+          setTimeout(() => indicator.style.display = 'none', 4000);
+        }
+      }
+    };
+
+    document.getElementById('selectGestor').addEventListener('change', async (e) => {
+      const email = e.target.value;
+      const preSel = document.getElementById('selectPrealerta');
+      const btn = document.getElementById('btnFilter');
+
+      resetBeforeFilter();
+      preSel.innerHTML = '<option value="">Cargando prealertas...</option>';
+      preSel.disabled = true;
+      btn.disabled = true;
+
+      if (!email) return;
+
+      try {
+        const q = query(collection(db, 'prealerta'), where('gestor', 'array-contains', email));
+        const snap = await getDocs(q);
+
+        preSel.innerHTML = '<option value="">Selecciona una prealerta</option>';
+        if (snap.empty) {
+          preSel.innerHTML = '<option value="">No hay prealertas</option>';
+        } else {
+          snap.forEach(d => {
+            const p = d.data();
+            const opt = document.createElement('option');
+            opt.value = d.id;
+            opt.textContent = `Semana ${p.noSemana || 'N/C'} - ${p.status || 'ABIERTA'}`;
+            preSel.appendChild(opt);
+          });
+        }
+        preSel.disabled = false;
+      } catch (err) {
+        console.error("Error prealertas:", err);
+      }
+    });
+
+    document.getElementById('selectPrealerta').addEventListener('change', function() {
+      document.getElementById('btnFilter').disabled = !this.value;
+      resetBeforeFilter();
+    });
+
+    document.getElementById('btnFilter').addEventListener('click', () => {
+      const preId = document.getElementById('selectPrealerta').value;
+      if (!preId) return;
+
+      resetBeforeFilter();
+      document.getElementById('loadingMsg').style.display = 'block';
+
+      unsubscribeDevices = onSnapshot(
+        query(
+          collection(db, 'dispositivos'),
+          where('idPrealerta', '==', preId),
+          orderBy('fechaRecuperado')
+        ),
+        (snap) => {
+          currentDevices = snap.docs.map(d => ({ id: d.id, data: d.data() }));
+          displayDevices(currentDevices);
+          document.getElementById('loadingMsg').style.display = 'none';
+        },
+        (err) => {
+          console.error("Error onSnapshot:", err);
+          document.getElementById('loadingMsg').innerHTML = 'Error al cargar datos';
+        }
+      );
+    });
+
+    function displayDevices(devices) {
+      const tbody = document.getElementById('devicesTableBody');
+      tbody.innerHTML = '';
+
+      if (devices.length === 0) {
+        document.getElementById('noResults').style.display = 'block';
+        return;
+      }
+
+      devices.forEach((dev, i) => {
+        const d = dev.data;
+        const fecha = d.fechaRecuperado ? new Date(d.fechaRecuperado).toLocaleDateString('es-MX') : 'N/A';
+
+        const opciones = statusOptions.map(o => 
+          `<option value="${o.value}" \( {d.status === o.value ? 'selected' : ''}> \){o.label}</option>`
+        ).join('');
+
+        const row = document.createElement('tr');
+        row.dataset.deviceId = dev.id;
+        row.innerHTML = `
+          <td>${i+1}</td>
+          <td><strong>${d.noContrato || 'N/C'}</strong></td>
+          <td>${d.nombre || 'Sin nombre'}</td>
+          <td>${d.tipoDispositivo || 'N/C'}</td>
+          <td>${d.noSerie || 'N/C'}</td>
+          <td>
+            <select class="status-select" onchange="updateDeviceStatus('${dev.id}', this.value)">
+              ${opciones}
+            </select>
+            <span class="saving-indicator" style="display:none;"></span>
+          </td>
+          <td>${fecha}</td>
+          <td><i class="ti ${d.fuenteAlimentacion ? 'ti-check text-success' : 'ti-x text-danger'}"></i></td>
+          <td><i class="ti ${d.controlRemoto ? 'ti-check text-success' : 'ti-x text-danger'}"></i></td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      document.getElementById('noResults').style.display = 'none';
+      document.getElementById('btnGeneratePDF').disabled = false;
+    }
+
+    document.getElementById('btnGeneratePDF').addEventListener('click', async () => {
+      if (currentDevices.length === 0) return;
+
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
+
+      const progressContainer = document.getElementById('progressContainer');
+      const progressBar = document.getElementById('progressBar');
+      const progressText = document.getElementById('progressText');
+      const progressStatus = document.getElementById('progressStatus');
+
+      progressContainer.classList.add('active');
+      document.getElementById('btnGeneratePDF').disabled = true;
+
+      const pageWidth  = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin     = 15;
+
+      for (let i = 0; i < currentDevices.length; i++) {
+        const dev = currentDevices[i];
+        const d   = dev.data;
+
+        if (i > 0) pdf.addPage();
+
+        const progress = Math.round(((i + 1) / currentDevices.length) * 100);
+        progressBar.style.width = progress + '%';
+        progressText.textContent = progress + '%';
+        progressStatus.textContent = `Procesando ${d.noContrato || 'equipo'}...`;
+
+        let y = 20;
+        pdf.setFontSize(14);
+        pdf.text(`${d.noContrato || 'N/C'} - ${d.nombre || 'Sin nombre'}`, margin, y);
+        y += 10;
+
+        pdf.setFontSize(10);
+        let fechaTxt = d.fechaRecuperado ? new Date(d.fechaRecuperado).toLocaleDateString('es-MX') : 'N/A';
+        pdf.text(`Fecha recup.: ${fechaTxt}`, margin, y); y += 6;
+        pdf.text(`Serie: ${d.noSerie || 'N/C'}`, margin, y); y += 6;
+        pdf.text(`Fuente: ${d.fuenteAlimentacion ? 'Sí' : 'No'}`, margin, y); y += 6;
+        pdf.text(`Control: ${d.controlRemoto ? 'Sí' : 'No'}`, margin + 60, y - 6);
+
+        y += 10;
+
+        if (d.urlFoto) {
+          const b64 = await imageUrlToBase64(d.urlFoto);
+          if (b64) {
+            const img = new Image();
+            img.src = b64;
+            await new Promise(r => img.onload = r);
+            let w = img.width, h = img.height;
+            const maxW = pageWidth - margin * 2;
+            const maxH = pageHeight - y - 20;
+            let drawW = maxW, drawH = maxW * (h / w);
+            if (drawH > maxH) { drawH = maxH; drawW = maxH * (w / h); }
+            const x = margin + (maxW - drawW) / 2;
+            pdf.addImage(b64, 'JPEG', x, y, drawW, drawH);
+          } else {
+            pdf.setTextColor(220, 0, 0);
+            pdf.text('Imagen no disponible', margin, y + 10);
+          }
+        } else {
+          pdf.text('Sin imagen asociada', margin, y + 10);
+        }
+      }
+
+      progressStatus.textContent = '¡PDF generado!';
+      const preId = document.getElementById('selectPrealerta').value;
+      pdf.save(`Evidencia_equipos_recuperados_${preId || 'sin-prealerta'}.pdf`);
+
+      setTimeout(() => {
+        progressContainer.classList.remove('active');
+        document.getElementById('btnGeneratePDF').disabled = false;
+        progressBar.style.width = '0%';
+        progressText.textContent = '0%';
+        progressStatus.textContent = 'Iniciando...';
+      }, 2200);
     });
   </script>
 
