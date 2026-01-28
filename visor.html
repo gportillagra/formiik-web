@@ -732,9 +732,10 @@
         const d = dev.data;
         const fecha = d.fechaRecuperado ? new Date(d.fechaRecuperado).toLocaleDateString('es-MX') : 'N/A';
 
-        const opciones = statusOptions.map(o => 
-          `<option value="${o.value}" \( {d.status === o.value ? 'selected' : ''}> \){o.label}</option>`
-        ).join('');
+        const opciones = statusOptions.map(o => {
+          const selected = d.status === o.value ? 'selected' : '';
+          return `<option value="${o.value}" ${selected}>${o.label}</option>`;
+        }).join('');
 
         const row = document.createElement('tr');
         row.dataset.deviceId = dev.id;
