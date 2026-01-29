@@ -7,9 +7,9 @@
 
   <meta property="og:title" content="Formiik Web - Panel" />
   <meta property="og:description" content="Panel de gestión empresarial en tiempo real." />
-  <meta property="og:image" content="/img/Icon.png" />
+  <meta property="og:image" content="./img/icon.png" />
 
-  <link rel="icon" href="/img/Icon.png" />
+  <link rel="icon" href="./img/icon.png" />
   <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" rel="stylesheet" />
   
   <script src="./config.js"></script>
@@ -73,7 +73,7 @@
       const cards = document.querySelectorAll('.access-card');
       cards.forEach(card => {
         const module = card.dataset.module;
-        if (rol === 'GESTOR' && !['admin-ruta', 'visor'].includes(module)) {
+        if (rol === 'GESTOR' && !['visor'].includes(module)) {
           card.style.display = 'none';
         }
       });
@@ -102,6 +102,7 @@
         radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.18) 0%, transparent 50%),
         linear-gradient(135deg, var(--formiik-soft-blue) 0%, var(--formiik-soft-yellow) 50%, var(--formiik-soft-red) 100%);
       color: #1e293b;
+      overflow-x: hidden;
     }
 
     body::before {
@@ -119,7 +120,7 @@
       50% { opacity: 0.88; transform: scale(1.02); }
     }
 
-    #loadingScreen {
+    /*#loadingScreen {
       position: fixed;
       inset: 0;
       background: rgba(255, 255, 255, 0.97);
@@ -140,7 +141,33 @@
       margin-bottom: 1.6rem;
     }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes spin { to { transform: rotate(360deg); } }*/
+    
+    /* Loading */
+    #loadingScreen {
+      position: fixed;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+
+    .spinner {
+      width: 60px; height: 60px;
+      border: 6px solid rgba(167,139,250,0.2);
+      border-top: 6px solid var(--formiik-primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 1.5rem;
+    }
+
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    #loadingScreen p { font-size: 1.3rem; font-weight: 600; color: var(--formiik-primary-dark); }
 
     header {
       position: fixed;
@@ -227,10 +254,8 @@
 
     main {
       margin-top: 70px;
-      padding: 2.5rem 2rem 4rem;
-      max-width: 1440px;
-      margin-left: auto;
-      margin-right: auto;
+      padding: 2.5rem 2.5rem 4rem;
+      min-height: calc(100vh - 70px);
     }
 
     .page-title {
