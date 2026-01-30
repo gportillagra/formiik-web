@@ -1,9 +1,9 @@
+Coleccion a guardar datos '/debug_contactos'
+
 package dev.gportillagra.formiikapp.domain.model
 
 import androidx.annotation.Keep
 import com.google.firebase.Timestamp
-import dev.gportillagra.formiikapp.domain.utils.normalize
-import dev.gportillagra.formiikapp.domain.utils.newUUID
 
 @Keep
 enum class Cartera(val label: String? = null) {
@@ -46,25 +46,25 @@ enum class Dictamen {
 
 @Keep
 data class Contacto(
-    val id: String = String.newUUID(),
+    val id: String = Es un valor nunerico convertido a string de 10 digitos, se deben agregar los dígitos faltantes como '0' al inicio,
     val idAsignacion: String? = null,
-    val noContrato: String = "",
-    val nombre: String = "",
-    val calle: String = "",
-    val colonia: String = "",
-    val codigoPostal: String = "",
-    val ciudad: String = "",
-    val estado: String = "",
-    val entreCalles: String? = null,
-    val referencias: String? = null,
+    val noContrato: String = Es un valor nunerico convertido a string de 10 digitos, se deben agregar los dígitos faltantes como '0' al inicio,
+    val nombre: String = Texto con formato de nombre propio y sin espacios de mas al inicio y fin y entre palabras,
+    val calle: String = Texto con formato de nombre propio y sin espacios de mas al inicio y fin y entre palabras,
+    val colonia: String = Debe ser tomado de una lista de colonias de la colección '/asentamientos' campo 'asentamiento' filtradas por 'ciudad',
+    val codigoPostal: String = Es un valor nuneroico que se debe convertir a string,
+    val ciudad: String = Valor tomado de la lista cargada de la colección '/asentamientos' campo 'municipio',
+    val estado: String = Texto con formato de nombre propio y sin espacios de mas al inicio y fin y entre palabras,
+    val entreCalles: String? = Texto con formato de oración (mayusculas en la pirmera letra y despues de signos de puntuación) y sin espacios de mas al inicio y fin y entre palabras,
+    val referencias: String? = Texto con formato de oración (mayusculas en la pirmera letra y despues de signos de puntuación) y sin espacios de mas al inicio y fin y entre palabras, si es igual a entrecalles se omite y no se parsea,
     val lat: Double? = null,
     val lng: Double? = null,
     val enRuta: Boolean = false,
-    val cartera: Cartera = Cartera.UNSPECIFIED,
-    val segmento: Segmento = Segmento.UNSPECIFIED,
-    val empresa: Empresa = Empresa.TOTALPLAY_CORTIZO,
-    val fechaAsignacion: Timestamp? = null,
-    val fechaVencimiento: Timestamp? = null,
+    val cartera: Cartera = se debe validar que exista en el enum y si no se establece clmo Cartera.UNSPECIFIED,
+    val segmento: Segmento = para parsear crea un diccionario de palabras relacionadas a cada elemento del enum Segemento (ejemplo BUCKET_121_A_150 -> 121 a 150, 121_150),
+    val empresa: Empresa = Un diccionario al igual que en segemento (ejemplo TOTALPLAY_CORTIZO -> TOTALPLA, CORTIZO),
+    val fechaAsignacion: Timestamp? = usa regexp para extraer el texto la primera fecha que aparezca de la columna que te de a parsear,
+    val fechaVencimiento: Timestamp? = usa regexp para extraer el texto la segunda fecha que aparezca de la columna que te de a parsear,
     val diasMora: Int? = null,
     val ciclo: Int? = null,
     val numeroEquipos: Int? = null,
@@ -73,8 +73,7 @@ data class Contacto(
     val saldoTotal: Double? = null,
     val referenciaPago: String? = null,
     val plazoConvenio: Int? = null,
-    val dictamen: Dictamen = Dictamen.UNSPECIFIED,
-	val fechaDictamen: Timestamp? = null,
-    val gestorAsignado: List<String> = emptyList(),
-	val esArchivado: Boolean = false,
+    val dictamen: Dictamen = No se va a recibir del excel que se importq, lo debes consultar del documento con mismo id que el actual en la colección '/contactos',
+    val gestorAsignado: List<String> = vas a recibir de excel una cadena de emails separados por ';' para crear el campo de tipo array<string> para el documento de firestore,
+	val esArchivado: Boolean = siempre lo debes gusrdar como false,
 )
