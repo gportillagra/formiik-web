@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Formiik Web - Gestión de Asignaciones</title>
+
+  <meta property="og:title" content="Formiik Web - Gestión" />
+  <meta property="og:description" content="Gestión de contactos y asignaciones" />
+
+  <link rel="icon" href="./img/icon.png" />
+  <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" rel="stylesheet" />
+  
+  <script src="./config.js"></script>
+  
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import {
+      getFirestore,
+      collection,
+      query,
+      where,
+      orderBy,
+      onSnapshot,
+      doc,
+      writeBatch,
+      Timestamp,
+      getDoc
+    } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const loadingScreen = document.getElementById('loadingScreen');
+    const mainContent = document.getElementById('mainContent');
+
+    let unsubscribeContactos = null;
+
+    // ────────────────────────────────────────────────
+    // Utilidad: fecha legible
+    // ────────────────────────────────────────────────
+    function formatDate(ts) {
+      if (!ts || !ts.toDate) return "—";
+      const d = ts.toDate();
+      return d.toLocaleDateString('es-MX', {
+        year: 'numeric', month: 'short', day: 'numeric'
+      });
+    }
+
+    // ────────────────────────────────────────────────
+    // Calcular fecha límite (hoy - 75 días)
+    // ────────────────────────────────────────────────
+    function getFechaLimite() {
+      const ahora = new Date();
+      ahora.setDate(ahora.getDate() - 70);
+      ahora.setHours(0,0,0,0);
+      return Timestamp.fromDate(ahora);
+    }
+
+    // ────────────────────────────────────────────────
+    // Renderizar ambas tablas
+    // ────────────────────────────────────────────────
+    function renderTablas(agrupados) {
+      const activos = agrupados.filter(g => !g.esArchivado);
+      const archivados = agrupados.filter(g => g.esArchivado);
+
+      // Tabla 1 - Activos
+      const tbodyActivos = document.getElementById('tbodyActivos');
+      tbodyActivos.innerHTML = '';
+
+      if (activos.length === 0) {
+        tbodyActivos.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:#64748b;">No hay asignaciones activas en este período</td></tr>';
+      } else {
+        activos.forEach(grupo => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${grupo.idAsignacion}</td>
+            <td>${formatDate(grupo.fechaAsignacion)}</td>
+            <td>${formatDate(grupo.fechaVencimiento)}</td>
+            <td style="text-align:center;font-weight:700;">${grupo.cantidad}</td>
+            <td style="text-align:center;">
+              <button class="btn-archivar"
+                      data-idasignacion="${grupo.idAsignacion}"
+                      data-esarchivado="false">
+                Archivar
+              </button>
+            </td>
+          `;
+          tbodyActivos.appendChild(tr);
+        });
+      }
+
+      // Tabla 2 - Archivados
+      const tbodyArchivados = document.getElementById('tbodyArchivados');
+      tbodyArchivados.innerHTML = '';
+
+      if (archivados.length === 0) {
+        tbodyArchivados.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:2rem;color:#64748b;">No hay asignaciones archivadas en este período</td></tr>';
+      } else {
+        archivados.forEach(grupo => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${grupo.idAsignacion}</td>
+            <td>${formatDate(grupo.fechaAsignacion)}</td>
+            <td>${formatDate(grupo.fechaVencimiento)}</td>
+            <td style="text-align:center;font-weight:700;">${grupo.cantidad}</td>
+          `;
+          tbodyArchivados.appendChild(tr);
+        });
+      }
+    }
+
+    // ────────────────────────────────────────────────
+    // Listener principal de contactos (real time)
+    // ────────────────────────────────────────────────
+    function escucharContactos() {
+      if (unsubscribeContactos) unsubscribeContactos();
+
+      const q = query(
+        collection(db, "contactos"),
+        where("fechaAsignacion", ">=", getFechaLimite()),
+        orderBy("fechaAsignacion", "asc")
+      );
+
+      unsubscribeContactos = onSnapshot(q, (snapshot) => {
+  const agrupadosMap = new Map();
+
+  snapshot.forEach(docSnap => {
+    const data = docSnap.data();
+    
+    // Clave SOLO por idAsignacion + estado archivado
+    const key = `${data.idAsignacion}|||${data.esArchivado ?? false}`;
+
+    if (!agrupadosMap.has(key)) {
+      agrupadosMap.set(key, {
+        idAsignacion: data.idAsignacion || "—",
+        fechaAsignacion: data.fechaAsignacion,   // valor inicial
+        fechaVencimiento: data.fechaVencimiento,
+        esArchivado: data.esArchivado ?? false,
+        cantidad: 0,
+        // Para decidir cuál fecha mostrar al final
+        minFechaAsignacion: data.fechaAsignacion,
+        maxFechaAsignacion: data.fechaAsignacion,
+        // Opcional: si quieres la más reciente
+        // minFechaVencimiento: data.fechaVencimiento,
+        // maxFechaVencimiento: data.fechaVencimiento,
+      });
+    }
+
+    const grupo = agrupadosMap.get(key);
+    grupo.cantidad++;
+
+    // Actualizar fechas (ejemplo: usar la fecha de asignación MÁS ANTIGUA del grupo)
+    if (data.fechaAsignacion && grupo.minFechaAsignacion) {
+      if (data.fechaAsignacion < grupo.minFechaAsignacion) {
+        grupo.minFechaAsignacion = data.fechaAsignacion;
+        grupo.fechaAsignacion = data.fechaAsignacion; // ← mostramos la más antigua
+      }
+    }
+
+    // Si prefieres la más reciente:
+    // if (data.fechaAsignacion && data.fechaAsignacion > grupo.maxFechaAsignacion) {
+    //   grupo.maxFechaAsignacion = data.fechaAsignacion;
+    //   grupo.fechaAsignacion = data.fechaAsignacion;
+    // }
+
+    // Lo mismo para fechaVencimiento (ejemplo: la más lejana)
+    if (data.fechaVencimiento && grupo.fechaVencimiento) {
+      if (data.fechaVencimiento > grupo.fechaVencimiento) {
+        grupo.fechaVencimiento = data.fechaVencimiento;
+      }
+    }
+  });
+
+  const agrupados = Array.from(agrupadosMap.values());
+  renderTablas(agrupados);
+}, err => {
+  console.error("Error en onSnapshot:", err);
+});
+    }
+
+    // ────────────────────────────────────────────────
+    // Archivar grupo completo (batch)
+    // ────────────────────────────────────────────────
+    async function archivarGrupo(idAsignacion) {
+      if (!confirm(`¿Realmente desea archivar TODOS los contactos de la asignación ${idAsignacion}?`)) {
+        return;
+      }
+
+      try {
+        const q = query(
+          collection(db, "contactos"),
+          where("idAsignacion", "==", idAsignacion),
+          where("esArchivado", "==", false)
+        );
+
+        const snap = await getDocs(q); // Nota: aquí usamos getDocs porque onSnapshot ya está activo
+
+        if (snap.empty) {
+          alert("No se encontraron documentos para archivar en este grupo.");
+          return;
+        }
+
+        const batch = writeBatch(db);
+        snap.forEach(d => {
+          batch.update(d.ref, {
+            esArchivado: true,
+            fechaArchivado: Timestamp.now()
+          });
+        });
+
+        await batch.commit();
+        console.log(`Archivados ${snap.size} documentos de ${idAsignacion}`);
+        // No es necesario hacer nada más → onSnapshot actualizará automáticamente
+      } catch (err) {
+        console.error("Error al archivar grupo:", err);
+        alert("No se pudo archivar el grupo. Revisa la consola.");
+      }
+    }
+
+    // ────────────────────────────────────────────────
+    // Auth + inicialización
+    // ────────────────────────────────────────────────
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = './login.html';
+        return;
+      }
+
+      try {
+        const userDocRef = doc(db, "usuarios", user.uid);
+        const userSnap = await getDoc(userDocRef);
+
+        let displayName = user.email?.split('@')[0] || 'Usuario';
+        let photoUrl = null;
+
+        if (userSnap.exists()) {
+          const d = userSnap.data();
+          if (d.displayName) displayName = d.displayName;
+          if (d.photoUrl) photoUrl = d.photoUrl;
+        }
+
+        document.getElementById('userName').textContent = displayName;
+        if (photoUrl) {
+          const av = document.getElementById('userAvatar');
+          av.style.background = `url(${photoUrl}) center/cover`;
+          av.textContent = '';
+        }
+
+      } catch (err) {
+        console.error("Error leyendo usuario:", err);
+      }
+
+      // Iniciar escucha en tiempo real
+      escucharContactos();
+
+      loadingScreen.style.display = 'none';
+      mainContent.style.display = 'block';
+    });
+
+    // Logout
+    document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+      if (unsubscribeContactos) unsubscribeContactos();
+      await signOut(auth);
+      window.location.href = './login.html';
+    });
+
+    // Delegación de eventos para botones "Archivar"
+    document.addEventListener('click', e => {
+      if (e.target.classList.contains('btn-archivar')) {
+        const idAsignacion = e.target.dataset.idasignacion;
+        archivarGrupo(idAsignacion);
+      }
+    });
+  </script>
+
+  <style>
+    /* ... mantener tus estilos originales ... */
+    :root {
+      --formiik-soft-red: #FF8F8F;
+      --formiik-soft-yellow: #FFF1CB;
+      --formiik-soft-blue: #C2E2FA;
+      --formiik-soft-purple: #B7A3E3;
+      --formiik-primary: #A78BFA;
+      --formiik-primary-dark: #8B5CF6;
+      --formiik-gradient: linear-gradient(135deg, var(--formiik-primary), var(--formiik-soft-red));
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      background: 
+        radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.25) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.25) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.25) 0%, transparent 50%),
+        linear-gradient(135deg, var(--formiik-soft-blue) 0%, var(--formiik-soft-yellow) 50%, var(--formiik-soft-red) 100%);
+      color: #1e293b;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at 25% 25%, rgba(255,255,255,0.12) 0%, transparent 50%),
+                  radial-gradient(circle at 75% 75%, rgba(255,255,255,0.08) 0%, transparent 50%);
+      z-index: -2;
+      animation: shimmer 22s ease-in-out infinite;
+    }
+
+    @keyframes shimmer {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.85; transform: scale(1.03); }
+    }
+
+    /* Loading */
+    #loadingScreen {
+      position: fixed;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+
+    .spinner {
+      width: 60px; height: 60px;
+      border: 6px solid rgba(167,139,250,0.2);
+      border-top: 6px solid var(--formiik-primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 1.5rem;
+    }
+
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    #loadingScreen p { font-size: 1.3rem; font-weight: 600; color: var(--formiik-primary-dark); }
+
+    /* Header */
+    header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 70px;
+      background: rgba(255,255,255,0.94);
+      backdrop-filter: blur(16px) saturate(180%);
+      border-bottom: 1px solid rgba(255,255,255,0.35);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+    }
+
+    .logo { display: flex; align-items: center; gap: 12px; }
+
+    .logo-img {
+      height: 42px;
+      filter: drop-shadow(0 4px 10px rgba(0,0,0,0.12));
+      transition: transform 0.3s ease;
+    }
+
+    .logo-img:hover { transform: scale(1.05); }
+
+    .logo-text {
+      font-size: 1.45rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #1e1b4b, #4338ca);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .user-section { display: flex; align-items: center; gap: 1.5rem; }
+
+    .user-info { display: flex; align-items: center; gap: 10px; }
+
+    .user-name {
+      font-weight: 600;
+      color: #1e293b;
+      max-width: 180px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--formiik-gradient);
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 1.15rem;
+      box-shadow: 0 4px 12px rgba(167,139,250,0.35);
+      transition: transform 0.2s ease;
+    }
+
+    .avatar:hover { transform: scale(1.08); }
+
+    .logout-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(239,68,68,0.12);
+      color: #dc2626;
+      border: 1px solid rgba(239,68,68,0.3);
+      padding: 0.65rem 1.3rem;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    .logout-btn:hover {
+      background: rgba(239,68,68,0.22);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(239,68,68,0.2);
+    }
+
+    .logout-icon { font-size: 1.3rem; display: none; }
+
+    main {
+      margin-top: 70px;
+      padding: 2.5rem 2.5rem 4rem;
+      min-height: calc(100vh - 70px);
+    }
+
+    .page-title {
+      font-size: 2.1rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #1e1b4b, #4338ca);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(18px);
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.25);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      padding: 2rem;
+      margin-bottom: 2rem;
+      animation: cardFloat 7s ease-in-out infinite;
+    }
+
+    @keyframes cardFloat {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-6px) rotate(0.4deg); }
+    }
+
+    footer {
+      padding: 2rem;
+      text-align: center;
+      color: #64748b;
+      font-size: 0.92rem;
+      border-top: 1px solid rgba(255,255,255,0.3);
+      background: rgba(255,255,255,0.4);
+      backdrop-filter: blur(10px);
+    }
+    
+    /* Contenedor principal de la tabla (recomendado envolver cada tabla) */
+    .table-wrapper {
+      overflow-x: auto;           /* Activa scroll horizontal cuando sea necesario */
+      -webkit-overflow-scrolling: touch; /* Mejora el scroll en iOS */
+      margin: 1.5rem 0;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      background: white;
+    }
+    
+    /* La tabla en sí */
+    table {
+      width: 100%;
+      min-width: 700px;           /* ← fuerza el scroll horizontal si la pantalla es más angosta */
+      border-collapse: collapse;
+      table-layout: auto;         /* o fixed si prefieres columnas de ancho fijo */
+    }
+    
+    /* celdas */
+    th, td {
+      padding: 1rem 1.2rem;
+      text-align: left;
+      border-bottom: 1px solid #e2e8f0;
+      white-space: nowrap;        /* evita que el texto se divida en varias líneas */
+      overflow: hidden;
+      text-overflow: ellipsis;    /* pone ... cuando el texto es muy largo */
+    }
+    
+    /* Encabezados */
+    th {
+      background: #f8fafc;
+      font-weight: 600;
+      color: #475569;
+      text-transform: uppercase;
+      font-size: 0.85rem;
+      letter-spacing: 0.5px;
+      position: sticky;           /* Opcional: fija los encabezados al hacer scroll vertical */
+      top: 0;
+      z-index: 1;
+    }
+    
+    /* Evita que la última fila tenga borde inferior */
+    tr:last-child td {
+      border-bottom: none;
+    }
+    
+    /* Para columnas específicas que quieras permitir que se envuelvan (opcional) */
+    td.wrap {
+      white-space: normal;        /* esta clase permite romper líneas */
+      min-width: 180px;
+    }
+    
+    /* Botón archivar (ajustado para que no se desborde) */
+    .btn-archivar {
+      background: #f97316;
+      color: white;
+      border: none;
+      padding: 0.55rem 1.1rem;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    
+    .btn-archivar:hover {
+      background: #ea580c;
+      transform: translateY(-1px);
+    }
+    
+    /* Responsive: en pantallas muy pequeñas */
+    @media (max-width: 768px) {
+      header { padding: 0 1.2rem; height: 64px; }
+      .logo-img { height: 38px; }
+      .logo-text { font-size: 1.3rem; }
+      .user-name { max-width: 120px; font-size: 0.95rem; }
+      .avatar { width: 40px; height: 40px; font-size: 1rem; }
+      .logout-btn { padding: 0.6rem 0.9rem; min-width: 44px; }
+      .logout-text { display: none; }
+      .logout-icon { display: inline-block; }
+      .user-section { gap: 1rem; }
+      .table-wrapper {
+        margin-left: -1rem;
+        margin-right: -1rem;
+        border-radius: 0;
+      }
+      
+      th, td {
+        padding: 0.9rem 0.8rem;
+        font-size: 0.92rem;
+      }
+      
+      /* Opcional: reducir min-width en móviles si quieres menos scroll */
+      table {
+        min-width: 600px;   /* ajusta según tus necesidades */
+      }
+      main { padding: 1.5rem 1.2rem; }
+    }
+
+    @media (max-width: 480px) {
+      .user-name { display: none; }
+      .logout-btn { padding: 0.55rem 0.8rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="loadingScreen">
+    <div class="spinner"></div>
+    <p>Cargando datos en tiempo real...</p>
+  </div>
+
+  <div id="mainContent" style="display: none;">
+
+    <header>
+      <!-- ... tu header original sin cambios ... -->
+      <div class="logo">
+        <img src="./img/icon.png" alt="Formiik" class="logo-img">
+        <span class="logo-text">Formiik Web</span>
+      </div>
+
+      <div class="user-section">
+        <div class="user-info">
+          <span class="user-name" id="userName">Cargando...</span>
+          <div class="avatar" id="userAvatar">U</div>
+        </div>
+        <button id="logoutBtn" class="logout-btn">
+          <span class="logout-text">Cerrar sesión</span>
+          <i class="ti ti-logout logout-icon"></i>
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <h1 class="page-title">Administrador de cartera vigente</h1>
+
+      <div class="card">
+        <h2 class="section-title">Asignación vigente</h2>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>ID Asignación</th>
+                <th>Fecha Asignación</th>
+                <th>Fecha Vencimiento</th>
+                <th>Contactos</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyActivos"></tbody>
+          </table>
+        </div>
+        
+        <h2 class="section-title">Asignación vencida</h2>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>ID Asignación</th>
+                <th>Fecha Asignación</th>
+                <th>Fecha Vencimiento</th>
+                <th>Contactos</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyArchivados"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <p>© 2026 Formiik Web • Administrador de cartera</p>
+    </footer>
+
+  </div>
+
+</body>
+</html>
