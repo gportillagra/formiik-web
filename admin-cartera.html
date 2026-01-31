@@ -27,7 +27,8 @@
       doc,
       writeBatch,
       Timestamp,
-      getDoc
+      getDoc,
+      getDocs
     } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
     const app = initializeApp(firebaseConfig);
@@ -51,7 +52,7 @@
     }
 
     // ────────────────────────────────────────────────
-    // Calcular fecha límite (hoy - 75 días)
+    // Calcular fecha límite (hoy - n días)
     // ────────────────────────────────────────────────
     function getFechaLimite() {
       const ahora = new Date();
@@ -126,60 +127,60 @@
       );
 
       unsubscribeContactos = onSnapshot(q, (snapshot) => {
-  const agrupadosMap = new Map();
-
-  snapshot.forEach(docSnap => {
-    const data = docSnap.data();
-    
-    // Clave SOLO por idAsignacion + estado archivado
-    const key = `${data.idAsignacion}|||${data.esArchivado ?? false}`;
-
-    if (!agrupadosMap.has(key)) {
-      agrupadosMap.set(key, {
-        idAsignacion: data.idAsignacion || "—",
-        fechaAsignacion: data.fechaAsignacion,   // valor inicial
-        fechaVencimiento: data.fechaVencimiento,
-        esArchivado: data.esArchivado ?? false,
-        cantidad: 0,
-        // Para decidir cuál fecha mostrar al final
-        minFechaAsignacion: data.fechaAsignacion,
-        maxFechaAsignacion: data.fechaAsignacion,
-        // Opcional: si quieres la más reciente
-        // minFechaVencimiento: data.fechaVencimiento,
-        // maxFechaVencimiento: data.fechaVencimiento,
+        const agrupadosMap = new Map();
+      
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          
+          // Clave SOLO por idAsignacion + estado archivado
+          const key = `${data.idAsignacion}|||${data.esArchivado ?? false}`;
+      
+          if (!agrupadosMap.has(key)) {
+            agrupadosMap.set(key, {
+              idAsignacion: data.idAsignacion || "—",
+              fechaAsignacion: data.fechaAsignacion,   // valor inicial
+              fechaVencimiento: data.fechaVencimiento,
+              esArchivado: data.esArchivado ?? false,
+              cantidad: 0,
+              // Para decidir cuál fecha mostrar al final
+              minFechaAsignacion: data.fechaAsignacion,
+              maxFechaAsignacion: data.fechaAsignacion,
+              // Opcional: si quieres la más reciente
+              // minFechaVencimiento: data.fechaVencimiento,
+              // maxFechaVencimiento: data.fechaVencimiento,
+            });
+          }
+      
+          const grupo = agrupadosMap.get(key);
+          grupo.cantidad++;
+      
+          // Actualizar fechas (ejemplo: usar la fecha de asignación MÁS ANTIGUA del grupo)
+          if (data.fechaAsignacion && grupo.minFechaAsignacion) {
+            if (data.fechaAsignacion < grupo.minFechaAsignacion) {
+              grupo.minFechaAsignacion = data.fechaAsignacion;
+              grupo.fechaAsignacion = data.fechaAsignacion; // ← mostramos la más antigua
+            }
+          }
+      
+          // Si prefieres la más reciente:
+          // if (data.fechaAsignacion && data.fechaAsignacion > grupo.maxFechaAsignacion) {
+          //   grupo.maxFechaAsignacion = data.fechaAsignacion;
+          //   grupo.fechaAsignacion = data.fechaAsignacion;
+          // }
+      
+          // Lo mismo para fechaVencimiento (ejemplo: la más lejana)
+          if (data.fechaVencimiento && grupo.fechaVencimiento) {
+            if (data.fechaVencimiento > grupo.fechaVencimiento) {
+              grupo.fechaVencimiento = data.fechaVencimiento;
+            }
+          }
+        });
+      
+        const agrupados = Array.from(agrupadosMap.values());
+        renderTablas(agrupados);
+      }, err => {
+        console.error("Error en onSnapshot:", err);
       });
-    }
-
-    const grupo = agrupadosMap.get(key);
-    grupo.cantidad++;
-
-    // Actualizar fechas (ejemplo: usar la fecha de asignación MÁS ANTIGUA del grupo)
-    if (data.fechaAsignacion && grupo.minFechaAsignacion) {
-      if (data.fechaAsignacion < grupo.minFechaAsignacion) {
-        grupo.minFechaAsignacion = data.fechaAsignacion;
-        grupo.fechaAsignacion = data.fechaAsignacion; // ← mostramos la más antigua
-      }
-    }
-
-    // Si prefieres la más reciente:
-    // if (data.fechaAsignacion && data.fechaAsignacion > grupo.maxFechaAsignacion) {
-    //   grupo.maxFechaAsignacion = data.fechaAsignacion;
-    //   grupo.fechaAsignacion = data.fechaAsignacion;
-    // }
-
-    // Lo mismo para fechaVencimiento (ejemplo: la más lejana)
-    if (data.fechaVencimiento && grupo.fechaVencimiento) {
-      if (data.fechaVencimiento > grupo.fechaVencimiento) {
-        grupo.fechaVencimiento = data.fechaVencimiento;
-      }
-    }
-  });
-
-  const agrupados = Array.from(agrupadosMap.values());
-  renderTablas(agrupados);
-}, err => {
-  console.error("Error en onSnapshot:", err);
-});
     }
 
     // ────────────────────────────────────────────────
@@ -207,8 +208,7 @@
         const batch = writeBatch(db);
         snap.forEach(d => {
           batch.update(d.ref, {
-            esArchivado: true,
-            fechaArchivado: Timestamp.now()
+            esArchivado: true
           });
         });
 
@@ -619,7 +619,7 @@
                 <th>ID Asignación</th>
                 <th>Fecha Asignación</th>
                 <th>Fecha Vencimiento</th>
-                <th>Contactos</th>
+                <th>Cuentas</th>
                 <th>Acción</th>
               </tr>
             </thead>
@@ -635,7 +635,7 @@
                 <th>ID Asignación</th>
                 <th>Fecha Asignación</th>
                 <th>Fecha Vencimiento</th>
-                <th>Contactos</th>
+                <th>Cuentas</th>
               </tr>
             </thead>
             <tbody id="tbodyArchivados"></tbody>
