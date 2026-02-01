@@ -668,7 +668,11 @@
       if (!email) return;
 
       try {
-        const q = query(collection(db, 'prealerta'), where('gestor', 'array-contains', email));
+        const q = query(
+          collection(db, 'prealerta'),
+          where('gestor', 'array-contains', email),
+          orderBy('fechaAutorizacion')
+        );
         const snap = await getDocs(q);
 
         preSel.innerHTML = '<option value="">Selecciona una prealerta</option>';
@@ -685,7 +689,7 @@
         }
         preSel.disabled = false;
       } catch (err) {
-        console.error("Error prealertas:", err);
+        console.error("Error prealertas:", err.message);
       }
     });
 
