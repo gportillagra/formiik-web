@@ -22,9 +22,10 @@
 <pre id="result"></pre>
 
 <script type="module">
+  import { firebaseConfigModule } from "./config.js";
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
   import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-  const app = initializeApp(firebaseConfig);
+  const app = initializeApp(firebaseConfigModule);
   const db = getFirestore(app);
 
   // ─── Generador vCard ────────────────────────────────────────
@@ -36,7 +37,8 @@
       "VERSION:3.0",
       `FN:${nombreLimpio}`,
       `N:${nombreLimpio};;;`,
-      `CATEGORIES:TotalPlay`,
+      "ORG:TotalPlay",
+      "CATEGORIES:TotalPlay",
     ];
 
     telefonos.forEach(tel => {
