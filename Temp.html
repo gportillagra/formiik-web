@@ -35,15 +35,15 @@
     let lines = [
       "BEGIN:VCARD",
       "VERSION:3.0",
-      `FN:${nombreLimpio}`,
-      `N:${nombreLimpio};;;`,
+      `FN;CHARSET=UTF-8:${nombreLimpio}`,
+      `N;CHARSET=UTF-8:;${nombreLimpio};;`,
       "ORG:TotalPlay",
       "CATEGORIES:TotalPlay",
     ];
 
     telefonos.forEach(tel => {
       // Puedes cambiar TYPE=CELL por WORK, HOME, etc. según necesites
-      lines.push(`TEL;TYPE=CELL:${tel}`);
+      lines.push(`TEL;TYPE=CELL:+52${tel}`);
     });
 
     lines.push("END:VCARD", "");

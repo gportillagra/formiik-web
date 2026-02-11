@@ -1,518 +1,760 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Gestión de Ruta - Contactos</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <!-- Tabler core -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
-    <!-- Firebase compat (mismo estilo que ya usas) -->
-    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-    <!-- Config codificada -->
-    <script src="config.js"></script>
-    <style>
-        .filter-chip {
-            max-width: 220px;
-        }
-        .table-fixed-head thead th {
-            position: sticky;
-            top: 0;
-            z-index: 1;
-        }
-    </style>
-</head>
-<body class="layout-fluid">
-<div class="page">
-    <!-- Sidebar simple -->
-    <aside class="navbar navbar-vertical navbar-expand-lg navbar-dark">
-        <div class="container-fluid">
-            <h1 class="navbar-brand navbar-brand-autodark">
-                <span class="navbar-brand-text">Formiik Ruta</span>
-            </h1>
-        </div>
-    </aside>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Formiik Web - Gestión de Ruta</title>
 
-    <div class="page-wrapper">
-        <!-- Header -->
-        <div class="page-header d-print-none">
-            <div class="container-xl">
-                <div class="row g-2 align-items-center">
-                    <div class="col">
-                        <h2 class="page-title mb-1">Gestión de ruta de contactos</h2>
-                        <div class="page-pretitle">
-                            Filtra contactos y actualiza el campo <b>enRuta</b>
-                        </div>
-                    </div>
-                    <div class="col-auto ms-auto">
-                        <div class="btn-list">
-                            <button id="loadBtn" class="btn btn-primary">
-                                <i class="ti ti-search me-1"></i>Buscar contactos
-                            </button>
-                            <button id="setRouteBtn" class="btn btn-success" disabled>
-                                <i class="ti ti-road me-1"></i>Marcar en ruta (seleccionados)
-                            </button>
-                            <button id="unsetAllBtn" class="btn btn-danger">
-                                <i class="ti ti-road-off me-1"></i>Quitar todo de ruta
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+  <meta property="og:title" content="Formiik Web - Gestión de Ruta" />
+  <meta property="og:description" content="Gestión y actualización de rutas de contactos" />
+  <meta property="og:image" content="./img/icon.png" />
 
-        <!-- Page body -->
-        <div class="page-body">
-            <div class="container-xl">
-                <div class="row row-cards">
-                    <!-- Filtros -->
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <h3 class="card-title">
-                                    <i class="ti ti-filter me-1"></i>Filtros opcionales
-                                </h3>
-                            </div>
-                            <div class="card-body">
-                                <div class="row g-3">
-                                    <div class="col-md-4 col-lg-3">
-                                        <label class="form-label">Gestor asignado</label>
-                                        <input id="gestorAsignadoInput" type="text" class="form-control" placeholder="id / nombre gestor">
-                                    </div>
-                                    <div class="col-md-4 col-lg-3">
-                                        <label class="form-label">ID Asignación</label>
-                                        <input id="idAsignacionInput" type="text" class="form-control" placeholder="idAsignacion">
-                                    </div>
-                                    <div class="col-md-4 col-lg-3">
-                                        <label class="form-label">Colonia</label>
-                                        <input id="coloniaInput" type="text" class="form-control" placeholder="colonia">
-                                    </div>
-                                    <div class="col-md-4 col-lg-3">
-                                        <label class="form-label">Ciudad</label>
-                                        <input id="ciudadInput" type="text" class="form-control" placeholder="ciudad">
-                                    </div>
-                                    <div class="col-md-4 col-lg-3">
-                                        <label class="form-label">Segmento</label>
-                                        <select id="segmentoSelect" class="form-select">
-                                            <option value="">(todos)</option>
-                                            <option value="BUCKET_91_A_120">91 a 120</option>
-                                            <option value="BUCKET_121_A_150">121 a 150</option>
-                                            <option value="BUCKET_151_A_180">151 a 180</option>
-                                            <option value="BUCKET_181_A_210">181 a 210</option>
-                                            <option value="BUCKET_211_A_240">211 a 240</option>
-                                            <option value="BUCKET_241_A_270">241 a 270</option>
-                                            <option value="BUCKET_271_A_300">271 a 300</option>
-                                            <option value="BUCKET_MAS_DE_300">Más de 300</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-4 col-lg-3">
-                                        <label class="form-label">Número de equipos</label>
-                                        <input id="numeroEquiposInput" type="number" min="0" class="form-control" placeholder="= N equipos">
-                                    </div>
-                                    <div class="col-md-4 col-lg-3">
-                                        <label class="form-label">Dictamen</label>
-                                        <select id="dictamenSelect" class="form-select">
-                                            <option value="">(todos)</option>
-                                            <option value="CAMBIO_DOMICILIO">CAMBIO_DOMICILIO</option>
-                                            <option value="ILOCALIZABLE">ILOCALIZABLE</option>
-                                            <option value="EQUIPO_RECUPERADO">EQUIPO_RECUPERADO</option>
-                                            <option value="RECUPERADO_OTROS">RECUPERADO_OTROS</option>
-                                            <option value="NEGATIVA_ENTREGA">NEGATIVA_ENTREGA</option>
-                                            <option value="PROMESA_ENTREGA">PROMESA_ENTREGA</option>
-                                            <option value="PERDIO_EQUIPOS">PERDIO_EQUIPOS</option>
-                                            <option value="SERVICIO_ACTIVO">SERVICIO_ACTIVO</option>
-                                            <option value="NOTIFICACION">NOTIFICACION</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-4 col-lg-3 d-flex align-items-end">
-                                        <button id="clearFiltersBtn" class="btn btn-outline-secondary w-100">
-                                            <i class="ti ti-x me-1"></i>Limpiar filtros
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+  <link rel="icon" href="./img/icon.png" />
+  <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css">
+  
+  <script src="./config.js"></script>
+  
+  <!-- Firebase SDK v9 modular -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { 
+      getFirestore, 
+      collection, 
+      getDocs, 
+      query, 
+      where, 
+      orderBy, 
+      doc, 
+      updateDoc,
+      writeBatch 
+    } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-                    <!-- Resumen -->
-                    <div class="col-12">
-                        <div class="row row-cards">
-                            <div class="col-sm-4">
-                                <div class="card">
-                                    <div class="card-body">
-                                        <div class="d-flex align-items-center">
-                                            <span class="avatar bg-blue text-white me-3">
-                                                <i class="ti ti-database fs-3"></i>
-                                            </span>
-                                            <div>
-                                                <div class="text-muted">Registros encontrados</div>
-                                                <div id="totalCount" class="h2 mb-0">0</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-sm-4">
-                                <div class="card">
-                                    <div class="card-body">
-                                        <div class="d-flex align-items-center">
-                                            <span class="avatar bg-green text-white me-3">
-                                                <i class="ti ti-road fs-3"></i>
-                                            </span>
-                                            <div>
-                                                <div class="text-muted">En ruta (filtro)</div>
-                                                <div id="routeCount" class="h2 mb-0">0</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-sm-4">
-                                <div class="card">
-                                    <div class="card-body">
-                                        <div class="d-flex align-items-center">
-                                            <span class="avatar bg-orange text-white me-3">
-                                                <i class="ti ti-checklist fs-3"></i>
-                                            </span>
-                                            <div>
-                                                <div class="text-muted">Seleccionados</div>
-                                                <div id="selectedCount" class="h2 mb-0">0</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-                    <!-- Tabla -->
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <h3 class="card-title">
-                                    <i class="ti ti-table me-1"></i>Contactos
-                                </h3>
-                                <div class="card-actions">
-                                    <span id="statusBadge" class="badge bg-muted">Sin cargar</span>
-                                </div>
-                            </div>
-                            <div class="card-body border-bottom py-2">
-                                <div id="status" class="small"></div>
-                            </div>
-                            <div class="table-responsive" style="max-height: 60vh;">
-                                <table class="table table-striped table-hover card-table table-vcenter table-fixed-head">
-                                    <thead class="table-dark">
-                                    <tr>
-                                        <th style="width:1%;">
-                                            <input id="selectAllCheckbox" type="checkbox" class="form-check-input m-0 align-middle">
-                                        </th>
-                                        <th>Contrato</th>
-                                        <th>Nombre</th>
-                                        <th>Colonia</th>
-                                        <th>Ciudad</th>
-                                        <th>Segmento</th>
-                                        <th>Dictamen</th>
-                                        <th class="text-center">En ruta</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody id="tableBody"></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
+    const loadingScreen = document.getElementById('loadingScreen');
+    const mainContent = document.getElementById('mainContent');
 
-                </div> <!-- row -->
-            </div> <!-- container -->
-        </div> <!-- page-body -->
-    </div> <!-- page-wrapper -->
-</div>
+    let currentUser = null;
+    let gestoresList = [];
+    let asentamientosList = [];
 
-<script>
-    let db;
-    let lastDocs = [];        // { id, ref, data }
-    let selectedIds = new Set();
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = './login.html';
+        return;
+      }
 
-    // Inicializar Firebase usando config.js
-    (function initFirebase() {
-        try {
-            firebase.initializeApp(firebaseConfig);
-            db = firebase.firestore();
-            setStatus('Firebase inicializado correctamente.', 'success');
-            updateStatusBadge('Listo', 'bg-green');
-        } catch (e) {
-            console.error(e);
-            setStatus('Error inicializando Firebase: ' + e.message, 'danger');
-            updateStatusBadge('Error', 'bg-red');
-        }
-    })();
+      currentUser = user;
 
-    // Construir query en función de filtros
-    function buildQuery() {
-        let query = db.collection('contactos');
+      try {
+        // Cargar gestores (usuarios con rol GESTOR o ADMINISTRADOR)
+        const usuariosSnap = await getDocs(collection(db, "usuarios"));
+        gestoresList = [];
+        usuariosSnap.forEach(d => {
+          const data = d.data();
+          if (data.email && (data.rolUsuario === 'GESTOR' || data.rolUsuario === 'ADMINISTRADOR')) {
+            gestoresList.push({
+              email: data.email,
+              displayName: data.displayName || data.email.split('@')[0]
+            });
+          }
+        });
+        gestoresList.sort((a,b) => a.displayName.localeCompare(b.displayName));
 
-        const gestor = document.getElementById('gestorAsignadoInput').value.trim();
-        const idAsignacion = document.getElementById('idAsignacionInput').value.trim();
-        const colonia = document.getElementById('coloniaInput').value.trim();
-        const ciudad = document.getElementById('ciudadInput').value.trim();
-        const segmento = document.getElementById('segmentoSelect').value;
-        const numeroEquiposStr = document.getElementById('numeroEquiposInput').value.trim();
-        const dictamen = document.getElementById('dictamenSelect').value;
+        // Cargar asentamientos / colonias
+        const asentamientosSnap = await getDocs(collection(db, "asentamientos"));
+        asentamientosList = [];
+        const coloniasSet = new Set();
+        const municipiosSet = new Set();
 
-        // Todos son opcionales. Solo se añaden si tienen valor.
-        if (gestor) {
-            // gestorAsignado es List<String> en tu modelo -> array-contains.
-            query = query.where('gestorAsignado', 'array-contains', gestor);
-        }
-        if (idAsignacion) {
-            query = query.where('idAsignacion', '==', idAsignacion);
-        }
-        if (colonia) {
-            query = query.where('colonia', '==', colonia);
-        }
-        if (ciudad) {
-            query = query.where('ciudad', '==', ciudad);
-        }
-        if (segmento) {
-            query = query.where('segmento', '==', segmento);
-        }
-        if (numeroEquiposStr) {
-            const numeroEquipos = Number(numeroEquiposStr);
-            if (!isNaN(numeroEquipos)) {
-                query = query.where('numeroEquipos', '==', numeroEquipos);
-            }
-        }
-        if (dictamen) {
-            query = query.where('dictamen', '==', dictamen);
-        }
+        asentamientosSnap.forEach(d => {
+          const data = d.data();
+          if (data.asentamiento) coloniasSet.add(data.asentamiento);
+          if (data.municipio) municipiosSet.add(data.municipio);
+        });
 
-        // Puedes añadir un orden por nombre para tabla más estable.
-        query = query.where('esArchivado', '==', false);
-        query = query.orderBy('nombre');
+        asentamientosList = {
+          colonias: [...coloniasSet].sort(),
+          municipios: [...municipiosSet].sort()
+        };
 
-        return query;
+        // Llenar selects
+        fillSelect('gestorSelect', gestoresList, 'email', 'displayName', '(todos los gestores)');
+        fillSelect('coloniaSelect', asentamientosList.colonias, null, null, '(todas las colonias)');
+        fillSelect('ciudadSelect', asentamientosList.municipios, null, null, '(todas las ciudades)');
+
+      } catch (err) {
+        console.error("Error cargando catálogos:", err);
+      }
+
+      // Mostrar contenido
+      loadingScreen.style.display = 'none';
+      mainContent.style.display = 'block';
+    });
+
+    function fillSelect(selectId, items, valueKey, labelKey, placeholder = '(todos)') {
+      const select = document.getElementById(selectId);
+      select.innerHTML = `<option value="">${placeholder}</option>`;
+      
+      if (Array.isArray(items) && !valueKey) {
+        // array simple (colonias, municipios)
+        items.forEach(item => {
+          const opt = document.createElement('option');
+          opt.value = item;
+          opt.textContent = item;
+          select.appendChild(opt);
+        });
+      } else {
+        // objetos con keys
+        items.forEach(item => {
+          const opt = document.createElement('option');
+          opt.value = item[valueKey];
+          opt.textContent = item[labelKey] || item[valueKey];
+          select.appendChild(opt);
+        });
+      }
     }
 
+    // ──────────────────────────────────────────────
+    // Funciones de la gestión de ruta
+    // ──────────────────────────────────────────────
+
+    let lastDocs = [];
+    let selectedIds = new Set();
+
     async function loadContacts() {
-        try {
-            setStatus('Cargando contactos...', 'info');
-            updateStatusBadge('Cargando...', 'bg-azure');
-            selectedIds.clear();
-            updateSelectedCount();
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = '';
+      lastDocs = [];
+      selectedIds.clear();
+      updateSelectedCount();
 
-            const query = buildQuery();
-            const snapshot = await query.get();
+      try {
+        setStatus('Cargando contactos...', 'info');
 
-            const tbody = document.getElementById('tableBody');
-            tbody.innerHTML = '';
-            lastDocs = [];
+        let q = query(
+          collection(db, 'contactos'),
+          where('esArchivado', '==', false),
+          orderBy('nombre')
+        );
 
-            if (snapshot.empty) {
-                setStatus('No se encontraron contactos con los filtros actuales.', 'warning');
-                updateStatusBadge('Sin resultados', 'bg-yellow');
-                updateTotals();
-                return;
-            }
+        const gestorVal = document.getElementById('gestorSelect').value;
+        const coloniaVal = document.getElementById('coloniaSelect').value;
+        const ciudadVal  = document.getElementById('ciudadSelect').value;
+        const segmentoVal = document.getElementById('segmentoSelect').value;
+        const numEquiposVal = document.getElementById('numeroEquiposInput').value.trim();
+        const dictamenVal = document.getElementById('dictamenSelect').value;
+        const idAsignacionVal = document.getElementById('idAsignacionInput').value.trim();
 
-            snapshot.forEach(doc => {
-                const data = doc.data();
-                lastDocs.push({ id: doc.id, ref: doc.ref, data });
-
-                const tr = document.createElement('tr');
-
-                // checkbox
-                const tdCheck = document.createElement('td');
-                const cb = document.createElement('input');
-                cb.type = 'checkbox';
-                cb.className = 'form-check-input m-0 align-middle row-select';
-                cb.dataset.id = doc.id;
-                cb.addEventListener('change', onRowSelectChange);
-                tdCheck.appendChild(cb);
-                tr.appendChild(tdCheck);
-
-                // columnas
-                const tdContrato = document.createElement('td');
-                tdContrato.textContent = data.noContrato || '';
-                tr.appendChild(tdContrato);
-
-                const tdNombre = document.createElement('td');
-                tdNombre.textContent = data.nombre || '';
-                tr.appendChild(tdNombre);
-
-                const tdColonia = document.createElement('td');
-                tdColonia.textContent = data.colonia || '';
-                tr.appendChild(tdColonia);
-
-                const tdCiudad = document.createElement('td');
-                tdCiudad.textContent = data.ciudad || '';
-                tr.appendChild(tdCiudad);
-
-                const tdSegmento = document.createElement('td');
-                tdSegmento.textContent = data.segmento || '';
-                tr.appendChild(tdSegmento);
-
-                const tdDictamen = document.createElement('td');
-                tdDictamen.textContent = data.dictamen || '';
-                tr.appendChild(tdDictamen);
-
-                const tdEnRuta = document.createElement('td');
-                tdEnRuta.className = 'text-center';
-                const badge = document.createElement('span');
-                const enRuta = !!data.enRuta;
-                badge.className = 'badge ' + (enRuta ? 'bg-green' : 'bg-secondary');
-                badge.textContent = enRuta ? 'Sí' : 'No';
-                tdEnRuta.appendChild(badge);
-                tr.appendChild(tdEnRuta);
-
-                tbody.appendChild(tr);
-            });
-
-            updateTotals();
-            setStatus(`Se cargaron ${lastDocs.length} contactos.`, 'success');
-            updateStatusBadge('Datos cargados', 'bg-green');
-
-        } catch (e) {
-            console.error(e);
-            setStatus('Error cargando contactos: ' + e.message, 'danger');
-            updateStatusBadge('Error', 'bg-red');
+        if (gestorVal)     q = query(q, where('gestorAsignado', 'array-contains', gestorVal));
+        if (coloniaVal)    q = query(q, where('colonia', '==', coloniaVal));
+        if (ciudadVal)     q = query(q, where('ciudad', '==', ciudadVal));
+        if (segmentoVal)   q = query(q, where('segmento', '==', segmentoVal));
+        if (dictamenVal)   q = query(q, where('dictamen', '==', dictamenVal));
+        if (idAsignacionVal) q = query(q, where('idAsignacion', '==', idAsignacionVal));
+        if (numEquiposVal && !isNaN(Number(numEquiposVal))) {
+          q = query(q, where('numeroEquipos', '==', Number(numEquiposVal)));
         }
+
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+          setStatus('No se encontraron contactos.', 'warning');
+          updateTotals();
+          return;
+        }
+
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          lastDocs.push({ id: docSnap.id, ref: docSnap.ref, data });
+
+          const tr = document.createElement('tr');
+
+          // Checkbox
+          const tdCheck = document.createElement('td');
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.className = 'form-check-input m-0 align-middle row-select';
+          cb.dataset.id = docSnap.id;
+          cb.addEventListener('change', onRowSelectChange);
+          tdCheck.appendChild(cb);
+          tr.appendChild(tdCheck);
+
+          tr.innerHTML += `
+            <td>${data.noContrato || ''}</td>
+            <td>${data.nombre || ''}</td>
+            <td>${data.colonia || ''}</td>
+            <td>${data.ciudad || ''}</td>
+            <td>${data.segmento || ''}</td>
+            <td>${data.dictamen || ''}</td>
+            <td class="text-center">
+              <span class="badge ${data.enRuta ? 'bg-success' : 'bg-secondary'}">
+                ${data.enRuta ? 'Sí' : 'No'}
+              </span>
+            </td>
+          `;
+
+          tbody.appendChild(tr);
+        });
+
+        updateTotals();
+        setStatus(`Se cargaron ${lastDocs.length} contactos.`, 'success');
+
+      } catch (err) {
+        console.error(err);
+        setStatus('Error al cargar contactos: ' + err.message, 'danger');
+      }
     }
 
     function updateTotals() {
-        const total = lastDocs.length;
-        const enRuta = lastDocs.filter(d => !!d.data.enRuta).length;
-        document.getElementById('totalCount').textContent = total;
-        document.getElementById('routeCount').textContent = enRuta;
-        updateSelectedCount();
-        document.getElementById('setRouteBtn').disabled = selectedIds.size === 0;
-    }
-
-    function setStatus(message, type) {
-        const status = document.getElementById('status');
-        const color = type === 'success' ? 'text-green' :
-                      type === 'danger' ? 'text-red' :
-                      type === 'warning' ? 'text-yellow' : 'text-muted';
-        status.innerHTML = `<span class="${color}">${message}</span>`;
-    }
-
-    function updateStatusBadge(text, badgeClass) {
-        const badge = document.getElementById('statusBadge');
-        badge.textContent = text;
-        badge.className = 'badge ' + badgeClass;
-    }
-
-    function onRowSelectChange(e) {
-        const id = e.target.dataset.id;
-        if (e.target.checked) {
-            selectedIds.add(id);
-        } else {
-            selectedIds.delete(id);
-        }
-        updateSelectedCount();
+      const total = lastDocs.length;
+      const enRuta = lastDocs.filter(d => !!d.data.enRuta).length;
+      document.getElementById('totalCount').textContent = total;
+      document.getElementById('routeCount').textContent = enRuta;
+      updateSelectedCount();
     }
 
     function updateSelectedCount() {
-        document.getElementById('selectedCount').textContent = selectedIds.size;
-        document.getElementById('setRouteBtn').disabled = selectedIds.size === 0;
-        // sincronizar checkbox "seleccionar todos"
-        const allCb = document.getElementById('selectAllCheckbox');
-        const rowCbs = Array.from(document.getElementsByClassName('row-select'));
-        if (rowCbs.length === 0) {
-            allCb.checked = false;
-            allCb.indeterminate = false;
-        } else {
-            const selected = rowCbs.filter(cb => cb.checked).length;
-            allCb.checked = selected === rowCbs.length;
-            allCb.indeterminate = selected > 0 && selected < rowCbs.length;
-        }
+      const count = selectedIds.size;
+      document.getElementById('selectedCount').textContent = count;
+      document.getElementById('setRouteBtn').disabled = count === 0;
+      
+      // Sincronizar "seleccionar todo"
+      const allCb = document.getElementById('selectAllCheckbox');
+      const rowCbs = [...document.querySelectorAll('.row-select')];
+      const selected = rowCbs.filter(cb => cb.checked).length;
+      allCb.checked = selected === rowCbs.length && selected > 0;
+      allCb.indeterminate = selected > 0 && selected < rowCbs.length;
+    }
+
+    function onRowSelectChange(e) {
+      const id = e.target.dataset.id;
+      if (e.target.checked) selectedIds.add(id);
+      else selectedIds.delete(id);
+      updateSelectedCount();
     }
 
     async function setSelectedInRoute(value) {
-        if (selectedIds.size === 0) return;
-        if (!confirm(`¿Quieres marcar enRuta = ${value ? 'true' : 'false'} para ${selectedIds.size} contactos seleccionados?`)) {
-            return;
-        }
+      if (selectedIds.size === 0) return;
+      if (!confirm(`¿Marcar enRuta = ${value} para ${selectedIds.size} contactos?`)) return;
 
-        try {
-            setStatus('Actualizando contactos seleccionados...', 'info');
-            const batch = db.batch();
-            lastDocs.forEach(d => {
-                if (selectedIds.has(d.id)) {
-                    batch.update(d.ref, { enRuta: value });
-                }
-            });
-            await batch.commit();  // operación atómica por lote[web:80][web:74]
-            setStatus('Contactos actualizados correctamente.', 'success');
-            await loadContacts();
-        } catch (e) {
-            console.error(e);
-            setStatus('Error actualizando contactos: ' + e.message, 'danger');
-        }
+      try {
+        const batch = writeBatch(db);
+        lastDocs.forEach(d => {
+          if (selectedIds.has(d.id)) {
+            batch.update(d.ref, { enRuta: value });
+          }
+        });
+        await batch.commit();
+        setStatus('Contactos actualizados correctamente.', 'success');
+        await loadContacts();
+      } catch (err) {
+        setStatus('Error al actualizar: ' + err.message, 'danger');
+      }
     }
 
     async function unsetAllInRoute() {
-        if (!confirm('¿Seguro que quieres poner enRuta = false para TODOS los contactos que actualmente están en ruta?')) {
-            return;
+      const gestorVal = document.getElementById('gestorSelect').value;
+
+      if (!gestorVal) {
+        alert("Debes seleccionar un gestor para usar 'Quitar todo de ruta'");
+        return;
+      }
+
+      if (!confirm(`¿Quitar de ruta TODOS los contactos asignados al gestor ${gestorVal}?`)) return;
+
+      try {
+        setStatus('Buscando contactos en ruta del gestor seleccionado...', 'info');
+
+        const q = query(
+          collection(db, 'contactos'),
+          where('gestorAsignado', 'array-contains', gestorVal),
+          where('enRuta', '==', true)
+        );
+
+        const snap = await getDocs(q);
+
+        if (snap.empty) {
+          setStatus('No hay contactos en ruta para este gestor.', 'warning');
+          return;
         }
-        try {
-            setStatus('Buscando contactos en ruta...', 'info');
-            updateStatusBadge('Actualizando...', 'bg-azure');
 
-            // Busca sólo los enRuta == true
-            const snapshot = await db.collection('contactos')
-                .where('enRuta', '==', true)
-                .get();
+        const batch = writeBatch(db);
+        snap.forEach(d => {
+          batch.update(d.ref, { enRuta: false });
+        });
+        await batch.commit();
 
-            if (snapshot.empty) {
-                setStatus('No hay contactos en ruta.', 'warning');
-                updateStatusBadge('Sin en ruta', 'bg-yellow');
-                return;
-            }
+        setStatus(`Se quitó de ruta a ${snap.size} contactos.`, 'success');
+        if (lastDocs.length > 0) await loadContacts();
 
-            const batch = db.batch();
-            snapshot.forEach(doc => {
-                batch.update(doc.ref, { enRuta: false });
-            });
-            await batch.commit();
+      } catch (err) {
+        setStatus('Error al quitar de ruta: ' + err.message, 'danger');
+      }
+    }
 
-            setStatus(`Se actualizó enRuta = false para ${snapshot.size} contactos.`, 'success');
-            updateStatusBadge('Ruta limpiada', 'bg-green');
-            // refresca si había una tabla cargada
-            if (lastDocs.length > 0) {
-                await loadContacts();
-            }
-        } catch (e) {
-            console.error(e);
-            setStatus('Error al quitar de ruta: ' + e.message, 'danger');
-            updateStatusBadge('Error', 'bg-red');
-        }
+    function setStatus(message, type) {
+      const el = document.getElementById('status');
+      const colors = { success: 'text-success', danger: 'text-danger', warning: 'text-warning', info: 'text-primary' };
+      el.innerHTML = `<span class="\( {colors[type] || 'text-muted'}"> \){message}</span>`;
     }
 
     function clearFilters() {
-        document.getElementById('gestorAsignadoInput').value = '';
-        document.getElementById('idAsignacionInput').value = '';
-        document.getElementById('coloniaInput').value = '';
-        document.getElementById('ciudadInput').value = '';
-        document.getElementById('segmentoSelect').value = '';
-        document.getElementById('numeroEquiposInput').value = '';
-        document.getElementById('dictamenSelect').value = '';
+      document.getElementById('gestorSelect').value = '';
+      document.getElementById('idAsignacionInput').value = '';
+      document.getElementById('coloniaSelect').value = '';
+      document.getElementById('ciudadSelect').value = '';
+      document.getElementById('segmentoSelect').value = '';
+      document.getElementById('numeroEquiposInput').value = '';
+      document.getElementById('dictamenSelect').value = '';
     }
 
     // Eventos
-    document.getElementById('loadBtn').addEventListener('click', loadContacts);
-    document.getElementById('unsetAllBtn').addEventListener('click', unsetAllInRoute);
-    document.getElementById('setRouteBtn').addEventListener('click', () => setSelectedInRoute(true));
-    document.getElementById('clearFiltersBtn').addEventListener('click', clearFilters);
-    document.getElementById('selectAllCheckbox').addEventListener('change', (e) => {
-        const checked = e.target.checked;
-        const cbs = document.getElementsByClassName('row-select');
-        selectedIds.clear();
-        Array.from(cbs).forEach(cb => {
-            cb.checked = checked;
-            if (checked) selectedIds.add(cb.dataset.id);
-        });
-        updateSelectedCount();
+    document.getElementById('loadBtn')?.addEventListener('click', loadContacts);
+    document.getElementById('setRouteBtn')?.addEventListener('click', () => setSelectedInRoute(true));
+    document.getElementById('unsetAllBtn')?.addEventListener('click', unsetAllInRoute);
+    document.getElementById('clearFiltersBtn')?.addEventListener('click', clearFilters);
+    document.getElementById('selectAllCheckbox')?.addEventListener('change', e => {
+      const checked = e.target.checked;
+      document.querySelectorAll('.row-select').forEach(cb => {
+        cb.checked = checked;
+        if (checked) selectedIds.add(cb.dataset.id);
+        else selectedIds.delete(cb.dataset.id);
+      });
+      updateSelectedCount();
     });
-</script>
+
+    // Logout
+    document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+      try {
+        await signOut(auth);
+        window.location.href = './login.html';
+      } catch (err) {
+        alert("Error al cerrar sesión");
+      }
+    });
+  </script>
+
+  <style>
+    :root {
+      --formiik-soft-red: #FF8F8F;
+      --formiik-soft-yellow: #FFF1CB;
+      --formiik-soft-blue: #C2E2FA;
+      --formiik-soft-purple: #B7A3E3;
+      --formiik-primary: #A78BFA;
+      --formiik-primary-dark: #8B5CF6;
+      --formiik-gradient: linear-gradient(135deg, var(--formiik-primary), var(--formiik-soft-red));
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      background: 
+        radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.25) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.25) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.25) 0%, transparent 50%),
+        linear-gradient(135deg, var(--formiik-soft-blue) 0%, var(--formiik-soft-yellow) 50%, var(--formiik-soft-red) 100%);
+      color: #1e293b;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at 25% 25%, rgba(255,255,255,0.12) 0%, transparent 50%),
+                  radial-gradient(circle at 75% 75%, rgba(255,255,255,0.08) 0%, transparent 50%);
+      z-index: -2;
+      animation: shimmer 22s ease-in-out infinite;
+    }
+
+    @keyframes shimmer {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.85; transform: scale(1.03); }
+    }
+
+    #loadingScreen {
+      position: fixed;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+
+    .spinner {
+      width: 60px; height: 60px;
+      border: 6px solid rgba(167,139,250,0.2);
+      border-top: 6px solid var(--formiik-primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 1.5rem;
+    }
+
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    #loadingScreen p { font-size: 1.3rem; font-weight: 600; color: var(--formiik-primary-dark); }
+
+    header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 70px;
+      background: rgba(255,255,255,0.94);
+      backdrop-filter: blur(16px) saturate(180%);
+      border-bottom: 1px solid rgba(255,255,255,0.35);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+    }
+
+    .logo { display: flex; align-items: center; gap: 12px; }
+
+    .logo-img { height: 42px; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.12)); transition: transform 0.3s ease; }
+    .logo-img:hover { transform: scale(1.05); }
+
+    .logo-text {
+      font-size: 1.45rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #1e1b4b, #4338ca);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .user-section { display: flex; align-items: center; gap: 1.5rem; }
+
+    .user-info { display: flex; align-items: center; gap: 10px; }
+
+    .user-name {
+      font-weight: 600;
+      color: #1e293b;
+      max-width: 180px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .avatar {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: var(--formiik-gradient);
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 1.15rem;
+      box-shadow: 0 4px 12px rgba(167,139,250,0.35);
+      transition: transform 0.2s ease;
+    }
+
+    .avatar:hover { transform: scale(1.08); }
+
+    .logout-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(239,68,68,0.12);
+      color: #dc2626;
+      border: 1px solid rgba(239,68,68,0.3);
+      padding: 0.65rem 1.3rem;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    .logout-btn:hover {
+      background: rgba(239,68,68,0.22);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(239,68,68,0.2);
+    }
+
+    main {
+      margin-top: 70px;
+      padding: 2.5rem 2.5rem 4rem;
+      min-height: calc(100vh - 70px);
+    }
+
+    .page-title {
+      font-size: 2.1rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #1e1b4b, #4338ca);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(18px);
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.25);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .btn-primary { background: var(--formiik-primary); border-color: var(--formiik-primary); }
+    .btn-primary:hover { background: var(--formiik-primary-dark); border-color: var(--formiik-primary-dark); }
+
+    .table-responsive { max-height: 55vh; overflow-y: auto; }
+    .table-fixed-head thead th { position: sticky; top: 0; z-index: 1; background: #1e293b; }
+
+    footer {
+      padding: 2rem;
+      text-align: center;
+      color: #64748b;
+      font-size: 0.92rem;
+      border-top: 1px solid rgba(255,255,255,0.3);
+      background: rgba(255,255,255,0.4);
+      backdrop-filter: blur(10px);
+    }
+
+    @media (max-width: 768px) {
+      header { padding: 0 1.2rem; height: 64px; }
+      .logo-img { height: 38px; }
+      .logo-text { font-size: 1.3rem; }
+      .user-name { max-width: 120px; font-size: 0.95rem; }
+      .avatar { width: 40px; height: 40px; }
+      main { padding: 1.5rem 1.2rem; }
+    }
+    
+    /* Mejor integración con el tema Formiik */
+    .form-control,
+    .form-select {
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+      color: #1e293b;
+      transition: all 0.2s ease;
+    }
+    
+    .form-control:focus,
+    .form-select:focus {
+      border-color: var(--formiik-primary);
+      box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.25);
+      background: rgba(255, 255, 255, 0.9);
+    }
+    
+    .form-label {
+      font-weight: 600;
+      color: var(--formiik-primary-dark);
+      margin-bottom: 0.5rem;
+    }
+    
+    /* Tabla más moderna y legible */
+    .table {
+      --tblr-table-bg: rgba(255,255,255,0.6);
+      --tblr-table-accent-bg: rgba(167,139,250,0.08);
+      --tblr-table-striped-bg: rgba(167,139,250,0.04);
+      --tblr-table-hover-bg: rgba(167,139,250,0.1);
+    }
+    
+    .table thead th {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+      color: white !important;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+    
+    .table td, .table th {
+      vertical-align: middle;
+    }
+    
+    /* Badge en columna En ruta */
+    .badge.bg-success { background-color: #16a34a !important; }
+    .badge.bg-secondary { background-color: #6b7280 !important; }
+  </style>
+</head>
+<body>
+
+  <div id="loadingScreen">
+    <div class="spinner"></div>
+    <p>Cargando catálogos y sesión...</p>
+  </div>
+
+  <div id="mainContent" style="display: none;">
+
+    <header>
+      <div class="logo">
+        <img src="./img/icon.png" alt="Formiik" class="logo-img">
+        <span class="logo-text">Formiik Web</span>
+      </div>
+
+      <div class="user-section">
+        <div class="user-info">
+          <span class="user-name" id="userName">Cargando...</span>
+          <div class="avatar" id="userAvatar">U</div>
+        </div>
+        <button id="logoutBtn" class="logout-btn" title="Cerrar sesión">
+          <span class="logout-text">Cerrar sesión</span>
+          <i class="ti ti-logout logout-icon"></i>
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <h1 class="page-title">Gestión de Ruta de Contactos</h1>
+
+      <div class="card">
+        <h2 style="margin-bottom: 1.5rem; color: var(--formiik-primary-dark);">Filtros</h2>
+
+        <div class="row g-3">
+          <div class="col-md-4 col-lg-3">
+            <label class="form-label">Gestor asignado</label>
+            <select id="gestorSelect" class="form-select">
+              <option value="">Cargando gestores...</option>
+            </select>
+          </div>
+          <div class="col-md-4 col-lg-3">
+            <label class="form-label">ID Asignación</label>
+            <input id="idAsignacionInput" type="text" class="form-control" placeholder="idAsignacion">
+          </div>
+          <div class="col-md-4 col-lg-3">
+            <label class="form-label">Colonia</label>
+            <select id="coloniaSelect" class="form-select">
+              <option value="">Cargando colonias...</option>
+            </select>
+          </div>
+          <div class="col-md-4 col-lg-3">
+            <label class="form-label">Ciudad</label>
+            <select id="ciudadSelect" class="form-select">
+              <option value="">Cargando ciudades...</option>
+            </select>
+          </div>
+          <div class="col-md-4 col-lg-3">
+            <label class="form-label">Segmento</label>
+            <select id="segmentoSelect" class="form-select">
+              <option value="">(todos)</option>
+              <option value="BUCKET_91_A_120">91 a 120</option>
+              <option value="BUCKET_121_A_150">121 a 150</option>
+              <option value="BUCKET_151_A_180">151 a 180</option>
+              <option value="BUCKET_181_A_210">181 a 210</option>
+              <option value="BUCKET_211_A_240">211 a 240</option>
+              <option value="BUCKET_241_A_270">241 a 270</option>
+              <option value="BUCKET_271_A_300">271 a 300</option>
+              <option value="BUCKET_MAS_DE_300">Más de 300</option>
+            </select>
+          </div>
+          <div class="col-md-4 col-lg-3">
+            <label class="form-label">Número de equipos</label>
+            <input id="numeroEquiposInput" type="number" min="0" class="form-control" placeholder="= N equipos">
+          </div>
+          <div class="col-md-4 col-lg-3">
+            <label class="form-label">Dictamen</label>
+            <select id="dictamenSelect" class="form-select">
+              <option value="">(todos)</option>
+              <option value="CAMBIO_DOMICILIO">CAMBIO_DOMICILIO</option>
+              <option value="ILOCALIZABLE">ILOCALIZABLE</option>
+              <option value="EQUIPO_RECUPERADO">EQUIPO_RECUPERADO</option>
+              <option value="RECUPERADO_OTROS">RECUPERADO_OTROS</option>
+              <option value="NEGATIVA_ENTREGA">NEGATIVA_ENTREGA</option>
+              <option value="PROMESA_ENTREGA">PROMESA_ENTREGA</option>
+              <option value="PERDIO_EQUIPOS">PERDIO_EQUIPOS</option>
+              <option value="SERVICIO_ACTIVO">SERVICIO_ACTIVO</option>
+              <option value="NOTIFICACION">NOTIFICACION</option>
+            </select>
+          </div>
+          <div class="col-md-4 col-lg-3 d-flex align-items-end">
+            <button id="clearFiltersBtn" class="btn btn-outline-secondary w-100">
+              <i class="ti ti-x me-1"></i>Limpiar filtros
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-4 d-flex gap-3 flex-wrap">
+          <button id="loadBtn" class="btn btn-primary">
+            <i class="ti ti-search me-1"></i>Buscar contactos
+          </button>
+          <button id="setRouteBtn" class="btn btn-success" disabled>
+            <i class="ti ti-road me-1"></i>Marcar en ruta (seleccionados)
+          </button>
+          <button id="unsetAllBtn" class="btn btn-danger">
+            <i class="ti ti-road-off me-1"></i>Quitar todo de ruta
+          </button>
+        </div>
+      </div>
+
+      <!-- Resumen -->
+      <div class="row g-3 mb-4">
+        <div class="col-sm-4">
+          <div class="card text-center">
+            <div class="card-body">
+              <h5 class="text-muted">Registros encontrados</h5>
+              <p id="totalCount" class="h2 mb-0">0</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-4">
+          <div class="card text-center">
+            <div class="card-body">
+              <h5 class="text-muted">En ruta (filtro)</h5>
+              <p id="routeCount" class="h2 mb-0">0</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-4">
+          <div class="card text-center">
+            <div class="card-body">
+              <h5 class="text-muted">Seleccionados</h5>
+              <p id="selectedCount" class="h2 mb-0">0</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla -->
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h3 class="card-title mb-0">
+            <i class="ti ti-table me-1"></i>Contactos
+          </h3>
+          <div id="status" class="small"></div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-striped table-hover card-table table-vcenter table-fixed-head">
+            <thead class="table-dark">
+              <tr>
+                <th style="width:1%;">
+                  <input id="selectAllCheckbox" type="checkbox" class="form-check-input m-0 align-middle">
+                </th>
+                <th>Contrato</th>
+                <th>Nombre</th>
+                <th>Colonia</th>
+                <th>Ciudad</th>
+                <th>Segmento</th>
+                <th>Dictamen</th>
+                <th class="text-center">En ruta</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+
+    <footer>
+      <p>© 2026 Formiik Web • Gestión de Ruta • v1.0.0</p>
+    </footer>
+
+  </div>
+
 </body>
 </html>
