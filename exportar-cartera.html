@@ -480,19 +480,6 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-    
-    const Dictamen = {
-      UNSPECIFIED:        "",
-      CAMBIO_DOMICILIO:   "YA NO VIVE AHI",
-      ILOCALIZABLE:       "DOM ILOCALIZABLE",
-      EQUIPO_RECUPERADO:  "RECOLECCIÓN DE EQUIPOS TOTAL",
-      RECUPERADO_OTROS:   "RECOLECTARON ANTERIORMENTE",
-      NEGATIVA_ENTREGA:   "NEGATIVA DE ENTREGA",
-      PROMESA_ENTREGA:    "NOTIFICACIÓN CON FAMILIAR",
-      PERDIO_EQUIPOS:     "NEGATIVA DE ENTREGA",
-      SERVICIO_ACTIVO:    "NEGATIVA DE ENTREGA",
-      NOTIFICACION:       "NOTIFICACIÓN BAJO PUERTA"
-    };
 
     let contactosData = [];
     let selectedRow = null;
@@ -552,18 +539,6 @@
         selectedRow = row;
       });
     });
-    
-    /**
-     * Convierte una clave de dictamen a su descripción correspondiente
-     * @param {string} clave - Ej: "NOTIFICACION", "ILOCALIZABLE", etc.
-     * @returns {string} La descripción o "" si no existe
-     */
-    function obtenerDescripcionDictamen(clave) {
-      // Normalizamos por si viene en minúsculas o con espacios extra
-      const claveNormalizada = clave.trim().toUpperCase();
-      
-      return Dictamen[claveNormalizada] ?? "";
-    }
 
     async function loadData() {
       const loadBtn = document.getElementById('loadBtn');
@@ -575,11 +550,15 @@
       try {
         let q = query(collection(db, 'contactos'));
 
-        if (fechaFilter) {
+        //if (fechaFilter) {
           const fechaInicio = new Date(fechaFilter + 'T00:00:00.000Z');
-          q = query(q, where('fechaDictamen', '>=', Timestamp.fromDate(fechaInicio)));
+          q = query(
+            q,
+            where('esArchivado', '==', false),
+            where('gestorAsignado', 'array-contains', 'gportillagra.cp@gmail.com')
+          );
           showStatus(`Filtrando desde ${fechaFilter}...`, 'info');
-        }
+        //}
 
         const snapshot = await getDocs(q);
 
@@ -615,8 +594,14 @@
             noContrato: data.noContrato || '',
             idAsignacion: data.idAsignacion || '',
             nombre: data.nombre || '',
-            dictamen: obtenerDescripcionDictamen(data.dictamen) || '',
+            colonia: data.colonia || '',
+            ciudad: data.ciudad || '',
+            diasMora: data.diasMora || 0,
+            segmento: data.segmento || '',
+            numeroEquipos: data.numeroEquipos || 0,
+            dictamen: data.dictamen || '',
             fechaDictamen: fechaStr,
+            totalGestiones: data.totalGestiones || 0,
             gestorAsignado: data.gestorAsignado[0]
           });
         });

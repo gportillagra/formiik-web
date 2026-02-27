@@ -29,7 +29,7 @@
   const db = getFirestore(app);
 
   // ─── Generador vCard ────────────────────────────────────────
-  function crearVCard(nombre, telefonos) {
+  function crearVCard(nombre, telefonos, calle, colonia, ciudad, estado, codigoPostal, noContrato) {
     const nombreLimpio = (nombre || "Sin nombre").replace(/[,;]/g, " ").trim();
 
     let lines = [
@@ -37,6 +37,8 @@
       "VERSION:3.0",
       `FN;CHARSET=UTF-8:${nombreLimpio}`,
       `N;CHARSET=UTF-8:;${nombreLimpio};;`,
+      `ADR;TYPE=HOME:;;${calle}, ${colonia};${ciudad};${estado};México;${codigoPostal}`,
+      `NOTE:${noContrato}`,
       "ORG:TotalPlay",
       "CATEGORIES:TotalPlay",
     ];
@@ -82,6 +84,7 @@
       const qContactos = query(
         collection(db, "contactos"),
         // where("esArchivado", "==", false),
+        where("idAsignacion", "==", "22/02/2026 AL 24/03/2026 BL"),
         where("gestorAsignado", "array-contains", "gportillagra.cp@gmail.com")
       );
 
@@ -99,13 +102,18 @@
         const data = doc.data();
         const nombre = data.nombre || "";
         const noContrato = data.noContrato;
+        const calle = String(data.calle || "").trim();
+        const colonia = String(data.colonia || "").trim();
+        const ciudad = String(data.ciudad || "").trim();
+        const estado = String(data.estado || "").trim();
+        const codigoPostal = String(data.codigoPostal || "").trim();
 
         if (!noContrato) return;
 
         const telefonos = mapaTelefonos.get(noContrato) || [];
         if (telefonos.length === 0) return;
 
-        vcfContent += crearVCard(nombre, telefonos);
+        vcfContent += crearVCard(nombre, telefonos, calle, colonia, ciudad, estado, codigoPostal, noContrato);
         contactosConTelefono++;
       });
 
